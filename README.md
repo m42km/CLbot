@@ -1,2 +1,2 @@
 # CLbot
- Cb on the beat
+Challenge List Discord Bot
