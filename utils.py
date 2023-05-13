@@ -40,7 +40,7 @@ def create_connection(host_name, user_name, db_name=None, user_password=None) ->
 
 @alru_cache(maxsize=150)
 async def calcPoints(n): # calculates list points, n is position
-    return round(259.688*(0.962695**n), 2) if n < 75 else 0
+    return round(259.688*(0.962695**n), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
 @alru_cache(maxsize=150)
@@ -54,7 +54,7 @@ async def remLastChar(s: str):
     l = len(s) - 2
     return s[0:l]
 
-@alru_cache(maxsize=20)
+@alru_cache(maxsize=50)
 async def getChallenges(limit, after, title):
     r = to_json(
         requests.get(f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}", headers=headers).text)
@@ -75,10 +75,10 @@ async def getChallenges(limit, after, title):
     return embed
 
 @alru_cache(maxsize=60)
-async def showChallenge(context: interactions.CommandContext, lvl_name: str = None, lvl_pos: int = None, challenge_names: list = None):
+async def showChallenge(context: interactions.CommandContext, lvl_name: str = None, lvl_pos: int = None, challenge_names: tuple = None):
     if lvl_name:
         cLevel = await correctLevel(context, lvl_name, challenge_names=challenge_names)
-        if type(cLevel) == list:
+        if type(cLevel) == tuple:
             print(cLevel)
             return tuple(cLevel)
         if not cLevel:
@@ -137,16 +137,16 @@ async def showChallenge(context: interactions.CommandContext, lvl_name: str = No
         if completion['status'] != "approved" or completion['player']['banned']:  # skip the record if this happens
             continue
 
-        p_flag = f":flag_{completion['nationality']['country_code'].lower()}:" if completion[
-            'nationality'] else ":question:"
+        p_flag = f" :flag_{completion['nationality']['country_code'].lower()}:" if completion[
+            'nationality'] else ""
         p_name = completion['player']['name']
         c_progress = completion['progress']
 
         proof = completion['video']
 
         if c_progress == 100:
-            v_data = f"**[{p_name} {p_flag}]({proof})**"
-            if len(v_data) + vLen > 800:
+            v_data = f"**[{p_name}]({proof})**{p_flag}"
+            if len(v_data) + vLen > 900:
                 #print(len(curr_victors_msg))
                 curr_victors_msg = await remLastChar(curr_victors_msg)
                 full_victors.append(curr_victors_msg)
@@ -162,11 +162,20 @@ async def showChallenge(context: interactions.CommandContext, lvl_name: str = No
     embed.set_video(url=verification_video)
     embed.add_field(name="__Overview__", value=overview_info, inline=True)
     if len(full_victors) > 1:
+        totalLength = len(overview_info) + len(thumbnail) + len(verification_video) + len(embed.title)
         embed.add_field(name="__Challenge victors__", value=full_victors[0])
+        totalLength += len(embed.fields[0].value) + len(embed.fields[0].name)
         for i in range(1, len(full_victors)):
             embed.add_field(name="__Challenge victors (cont.)__", value=full_victors[i], inline=True)
+            totalLength += len(embed.fields[i].value) + len(embed.fields[i].name)
+        print(totalLength)
     else:
         embed.add_field(name="__Challenge victors__", value=full_victors[0], inline=True)
+    if len(str(embed._json)) > 5900:
+        #for i in range(2):
+        embed.remove_field(len(embed.fields) - 1)
+        embed.fields[len(embed.fields) - 1].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
+
     return tuple([embed, f_level['position']]) if lvl_name else embed
 
 @alru_cache()

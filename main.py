@@ -22,7 +22,7 @@ bot = interactions.Client(token=token)
 
 sql_connection = create_connection(sql_creds['host'], sql_creds['database'], sql_creds['username'], sql_creds['password'])
 
-challenge_names_list = []
+challenge_names_list = ()
 async def updateLevels():
     global challenge_names_list
     levels_list = []
@@ -38,6 +38,7 @@ async def updateLevels():
 
 @bot.event
 async def on_ready():
+    await updateLevels()
     print(f"Bot online and logged in as {bot} in guilds {bot.guilds}")
     while True:
         await asyncio.sleep(300)
@@ -320,8 +321,17 @@ async def profile(ctx: interactions.CommandContext, name: str):
                       interactions.Option(name="note", type=interactions.OptionType.STRING, required=False, description="Note")
                       ])
 async def submitrecord(ctx: interactions.CommandContext, challenge, player, video, raw_footage, note):
+    cChallenge = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT,
+        label="Challenge",
+        custom_id="mod_chess_input",
+        min_length=1,
+        max_length=6
+    )
+
     try:
         # find ID
+        cLevel = await correctLevel(challenge)
         demon_id = requests.get(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}", headers=headers).json()[0]["id"]
 
         r = requests.post("https://challengelist.gd/api/v1/records/",
@@ -342,7 +352,7 @@ async def submitrecord(ctx: interactions.CommandContext, challenge, player, vide
 @bot.command(name="getchallenge", description="Lookup completions of a challenge (make sure to use one of the two options)",
              options=[interactions.Option(name="level", description="Level name (not case-sensitive)", type=interactions.OptionType.STRING, required=False),
                       interactions.Option(name="position", description="List position", type=interactions.OptionType.INTEGER, required=False)])
-async def getchallenge(ctx: interactions.CommandContext, level=None, position: int = None):
+async def getchallenge(ctx: interactions.CommandContext, level: str = None, position: int = None):
     g_level = None
     if not level and not position:
         await ctx.send("**Error:** No arguments provided!")
@@ -402,6 +412,7 @@ async def levelcorrect(ctx: interactions.ComponentContext):
         custom_id="next_demon",
         disabled=False if (position < 250) else True
     )
+
     await ctx.send(embed=embed, components=[lastDemon, nextDemon])
 
 @bot.component("next_demon")
@@ -443,7 +454,5 @@ async def backchallenge(ctx: interactions.CommandContext):
         disabled=False if (pos < 250) else True
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
-
-
 
 bot.start()
