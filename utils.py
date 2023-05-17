@@ -43,7 +43,7 @@ async def calcPoints(n): # calculates list points, n is position
     return round(259.688*(0.962695**n), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
-@alru_cache(maxsize=150)
+@alru_cache(maxsize=250)
 async def getVidThumbnail(url): # video URL to thumbnail
     vCode = url.split("=")[1]
     #print("https://img.youtube.com/vi/" + vCode + "0.jpg")
@@ -54,7 +54,7 @@ async def remLastChar(s: str):
     l = len(s) - 2
     return s[0:l]
 
-@alru_cache(maxsize=50)
+@alru_cache()
 async def getChallenges(limit, after, title):
     r = to_json(
         requests.get(f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}", headers=headers).text)
@@ -74,7 +74,7 @@ async def getChallenges(limit, after, title):
     embed.set_thumbnail(await getVidThumbnail(r[0]['video']))
     return embed
 
-@alru_cache(maxsize=60)
+@alru_cache()
 async def showChallenge(context: interactions.CommandContext, lvl_name: str = None, lvl_pos: int = None, challenge_names: tuple = None):
     if lvl_name:
         cLevel = await correctLevel(context, lvl_name, challenge_names=challenge_names)
@@ -118,12 +118,12 @@ async def showChallenge(context: interactions.CommandContext, lvl_name: str = No
     level_id = f_level['level_id']
     thumbnail = await getVidThumbnail(verification_video)
 
-    l_overview_info = [f"Verified by **{verifier}**",
-                       f"**FPS:** {fps}",
-                       f"**Verification: [Link]({verification_video})**",
-                       f"**ID:** {level_id}",
-                       f"**Points Awarded:** {points}"]
-    overview_info = "\n".join(l_overview_info)
+    # l_overview_info = [f"Verified by **{verifier}**",
+    #                    f"**FPS:** {fps}",
+    #                    f"**Verification: [Link]({verification_video})**",
+    #                    f"**ID:** {level_id}",
+    #                    f"**Points Awarded:** {points}"]
+    # overview_info = "\n".join(l_overview_info)
 
     victors = []
     full_victors = []
@@ -157,25 +157,31 @@ async def showChallenge(context: interactions.CommandContext, lvl_name: str = No
             curr_victors_msg += v_data + ", "
     full_victors.append(await remLastChar(curr_victors_msg))
     #print(full_victors)
-    embed = interactions.Embed(color=0xffae00, title=f"{position}. {name} by {creator}")
-    embed.set_image(url=thumbnail)
-    embed.set_video(url=verification_video)
-    embed.add_field(name="__Overview__", value=overview_info, inline=True)
+    embed = interactions.Embed(color=0xffae00, title=f"{position}. {name}")
+    embed.set_thumbnail(url=thumbnail)
+    embed.add_field(name="Creator(s)", value=creator, inline=True)
+    embed.add_field(name="Verifier", value=f"[{verifier}]({verification_video})", inline=True)
+    embed.add_field(name="Level ID", value=level_id if level_id else "N/A", inline=True)
+    embed.add_field(name="FPS(s)", value=fps, inline=True)
+    embed.add_field(name="Points Awarded", value=str(points), inline=True)
     if len(full_victors) > 1:
-        totalLength = len(overview_info) + len(thumbnail) + len(verification_video) + len(embed.title)
-        embed.add_field(name="__Challenge victors__", value=full_victors[0])
-        totalLength += len(embed.fields[0].value) + len(embed.fields[0].name)
+        victorCount = round(full_victors[0].count(' ') / 2)
+        embed.add_field(name=f"Challenge victors (1-{victorCount})", value=full_victors[0])
         for i in range(1, len(full_victors)):
-            embed.add_field(name="__Challenge victors (cont.)__", value=full_victors[i], inline=True)
-            totalLength += len(embed.fields[i].value) + len(embed.fields[i].name)
-        print(totalLength)
+            if full_victors[i].count(",") > 0:
+                embed.add_field(name=f"Challenge victors ({victorCount + 1}-{victorCount + full_victors[i].count(',') + 3})", value=full_victors[i], inline=True if victorCount > 0 else False)
+            else:
+                embed.add_field(name=f"Challenge victor ({victorCount + 2})", value=full_victors[i], inline=True)
+            victorCount += full_victors[i].count(',') + 1
     else:
-        embed.add_field(name="__Challenge victors__", value=full_victors[0], inline=True)
-    if len(str(embed._json)) > 5900:
+        embed.add_field(name="Challenge victors", value=full_victors[0] if full_victors[0] else "None!", inline=False)
+    while len(str(embed._json)) > 5900:
         #for i in range(2):
         embed.remove_field(len(embed.fields) - 1)
-        embed.fields[len(embed.fields) - 1].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
-
+        l = len(embed.fields) - 1
+        embed.fields[l].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
+        embed.fields[l].name = embed.fields[l].name.split('-')[0] + '...)'
+    print(embed)
     return tuple([embed, f_level['position']]) if lvl_name else embed
 
 @alru_cache()
@@ -209,7 +215,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
     move_button = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Next Page",
-        custom_id="nextpage_leaderboard",
+        custom_id="nextpage_leaderboard"
     )
     back_button = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
@@ -217,12 +223,15 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         custom_id="backpage_leaderboard",
         disabled=False if ((after - limit) >= 0) else True
     )
+
+    options = []
+
     disableNext, disableNextAft = await chLeaderboardPageDisable(limit, after, cCountry)
     if disableNext or len(r) < limit:
         move_button.disabled = True
     print(after)
     if after == 0 or not after:
-        title = f"Challenge List Leaderboard (Top {limit if limit and limit < 26 else 10}{(' in ' + cCountry) if cCountry else ''})"
+        title = f"Challenge List Leaderboard (Top {limit}{(' in ' + cCountry) if cCountry else ''})"
     else:
         title = f"Challenge List Leaderboard (#{after + 1}-{limit + after}{(' in ' + cCountry) if cCountry else ''})"
     embed = interactions.Embed(color=0xffae00,
@@ -234,7 +243,95 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
     for player in r:
         country_emoji = f":flag_{player['nationality']['country_code'].lower()}:" if player[
             'nationality'] else ":question:"
-        name, rank, points = player['name'], player['rank'], player['score']
-        embed.add_field(name=f"__{rank}. {name}__ {country_emoji}", value=f"**{round(points, 3)}** points",
+        name, rank, points = player['name'], player['rank'], round(player['score'], 2)
+        options.append(interactions.SelectOption(
+            label=f"{name}",
+            value=f"leaderboard_selectplayer_{name}",
+            description=f"#{rank} - {points} points",
+        ))
+        embed.add_field(name=f"{rank}. {name} {country_emoji}", value=f"**{points}** points",
                         inline=False)
-    return tuple([embed, back_button, move_button])
+
+    if options == []:
+        return tuple([embed, back_button, move_button])
+    else:
+        actionRow = interactions.ActionRow(components=[back_button, move_button])
+        selMenu = interactions.SelectMenu(options=options, max_value=1, type=interactions.ComponentType.SELECT, custom_id="leaderboard_playermenu")
+        actionRow2 = interactions.ActionRow(components=[selMenu])
+        return tuple([embed, actionRow, actionRow2])
+
+async def getProfile(ctx, name):
+    p = to_json(
+        requests.get(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}", headers=headers).text)
+    if not p:
+        await ctx.send("Couldn't find any player with that name, try again (a typo maybe?)")
+        return None
+    else:
+        # get the correct user
+        if len(p) > 1:
+            i = 0
+            for player in p:
+                if len(player['name']) == name:
+                    p = p[i]
+                    break
+                else:
+                    i += 1
+            if len(p) > 1:
+                p = p[0]
+        else:
+            p = p[0]
+
+        id = p['id']
+        rank = p['rank']
+        badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
+        more_details = to_json(requests.get(f"https://challengelist.gd/api/v1/players/{id}", headers=headers).text)[
+            'data']
+        created_demons = []
+        for demon in more_details['created']:
+            created_demons.append(f"**{demon['name']}** (#{demon['position']})")
+        created_demons = ', '.join(created_demons) if created_demons else "None"
+
+        published_demons = []
+        for demon in more_details['published']:
+            published_demons.append(f"**{demon['name']}** (#{demon['position']})")
+        published_demons = ', '.join(published_demons) if published_demons else "None"
+
+        verified_demons = []
+        for demon in more_details['verified']:
+            verified_demons.append(f"**{demon['name']}** (#{demon['position']})")
+        verified_demons = ', '.join(verified_demons) if verified_demons else "None"
+
+        completed_demons, legacy_demons, removed_demons = [], [], []
+        for record in more_details['records']:
+            if record['demon']['position'] > 100:
+                if "❌" in record['demon']['name']:
+                    removed_demons.append(f"*{record['demon']['name']}*")
+                else:
+                    legacy_demons.append(f"{record['demon']['name']}")
+            else:
+                completed_demons.append(f"{record['demon']['name']}")
+
+        # i wish there was a better way to do this......
+        completed_demons = ', '.join(completed_demons) if completed_demons else "None"
+        legacy_demons = ', '.join(legacy_demons) if legacy_demons else "None"
+        removed_demons = ', '.join(removed_demons) if removed_demons else "None"
+
+        cCountry = f":flag_{p['nationality']['country_code'].lower()}:" if p['nationality'] else ":question:"
+
+        embed = interactions.Embed(color=0xffae00, title=f"{p['name']} {cCountry}")
+
+        embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
+        embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
+        embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
+        embed.add_field(name="Challenges created", value=created_demons, inline=True)
+        embed.add_field(name="Published challenges", value=published_demons, inline=True)
+        embed.add_field(name="Verified challenges", value=verified_demons, inline=True)
+
+        embed.add_field(name="Completed challenges",
+                        value=(completed_demons[:1021] + "...") if len(completed_demons) > 1020 else completed_demons, inline=True)
+        embed.add_field(name="Completed challenges (legacy)",
+                        value=(legacy_demons[:1021] + "...") if len(legacy_demons) > 1020 else legacy_demons)
+        embed.add_field(name="Completed challenges (removed)",
+                        value=(removed_demons[:1021] + "...") if len(removed_demons) > 1020 else removed_demons)
+        return embed
+

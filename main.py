@@ -10,7 +10,9 @@ import pymysql
 import mysql.connector
 from mysql.connector import Error
 import asyncio
+from datetime import datetime
 
+createdAt = (datetime.now() - datetime(1970, 1, 1)).total_seconds()
 
 token = load(open("token.json"))['token']
 
@@ -18,7 +20,13 @@ agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) 
 headers = {"User-Agent": agent}
 
 sql_creds = load(open("sql_creds.json"))
-bot = interactions.Client(token=token)
+activity = interactions.PresenceActivity(name="VSC",
+                                         type=interactions.PresenceActivityType.GAME, created_at=createdAt)
+presence = interactions.ClientPresence(activities=[activity])
+
+bot = interactions.Client(token=token, presence=presence)
+
+
 
 sql_connection = create_connection(sql_creds['host'], sql_creds['database'], sql_creds['username'], sql_creds['password'])
 
@@ -27,7 +35,7 @@ async def updateLevels():
     global challenge_names_list
     levels_list = []
     i = 0
-    while i <= 250:
+    while i <= 300:
         r = to_json(requests.get(f"https://challengelist.gd/api/v1/demons/?limit=50&after={i}", headers=headers).text)
         #print(r)
         for level in r:
@@ -35,6 +43,7 @@ async def updateLevels():
             #print(level['name'])
         i += 50
     challenge_names_list = tuple(levels_list)
+    print("Reloaded challenges")
 
 @bot.event
 async def on_ready():
@@ -66,7 +75,10 @@ async def leaderboard(ctx: interactions.CommandContext, page: int = None, limit:
     else:
         out = await getLeaderboard(ctx, limit, country)
     if type(out) == tuple:
-        await ctx.send(embeds=out[0], components=[out[1], out[2]])
+        if len(out) == 3:
+            await ctx.send(embeds=out[0], components=[out[1], out[2]])
+        else:
+            await ctx.send(embeds=out[0], components=[out[1], out[2], out[3]])
     else:
         return
 
@@ -97,6 +109,7 @@ async def backpage_leaderboard(ctx: interactions.CommandContext):
     after -= limit
 
     out = await getLeaderboard(ctx, limit, country, after=after, autocorrect=False)
+    print(out)
     await d.edit(content="", embeds=out[0], components=[out[1], out[2]])
 
 @bot.component("nextpage_leaderboard")
@@ -127,6 +140,14 @@ async def nextpage_leaderboard(ctx: interactions.ComponentContext):
 
     out = await getLeaderboard(ctx, limit, country, after=after, autocorrect=False)
     await d.edit(content="", embeds=out[0], components=[out[1], out[2]])
+
+@bot.component("leaderboard_playermenu")
+async def leaderboard_playersel(ctx: interactions.ComponentContext, val):
+    d = await ctx.defer(edit_origin=True)
+    out = await getProfile(ctx, val[0].split("_")[2])
+    print(val)
+    if out:
+        await d.edit(content="", embeds=[ctx.message.embeds[0], out], components=ctx.message.components)
 
 @bot.component("countrycorrect")
 async def countrycorrect_button(ctx: interactions.ComponentContext):
@@ -162,7 +183,7 @@ async def challenges(ctx: interactions.CommandContext, limit: int = None, page: 
         limit = 10
 
     title = f"Challenge List (Top {limit})"
-    embed = await getChallenges(limit, None if not page else page * limit, title)
+    embed = await getChallenges(limit, 0 if not page else page * limit, title)
     if not embed:
         await ctx.send("**Error:** Page does not exist!")
     move_button = interactions.Button(
@@ -249,68 +270,11 @@ async def profile(ctx: interactions.CommandContext, name: str):
 
     if not name:
         name = sql_query(sql_connection, f"SELECT * FROM users WHERE discord_id = {int(ctx.author.id)};") # this feature is unfinished
-    p = to_json(requests.get(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}", headers=headers).text)
-    if not p:
-        if "@everyone" in name.lower() or "@here" in name.lower():
-            # await ctx.author.kick(ctx.guild_id) # come on man... really?
-            await ctx.send("Couldn't find any player with that name, try again (a typo maybe?)")
-            pass
-        else:
-            await ctx.send("Couldn't find any player with that name, try again (a typo maybe?)")
+    out = await getProfile(ctx, name)
+    if not out:
+        return
     else:
-        # get the correct user
-        if len(p) > 1:
-            i = 0
-            for player in p:
-                if len(player['name']) == name:
-                    p = p[i]
-                    break
-                else:
-                    i += 1
-            if len(p) > 1:
-                p = p[0]
-        else:
-            p = p[0]
-
-        id = p['id']
-        rank = p['rank']
-        badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
-        more_details = to_json(requests.get(f"https://challengelist.gd/api/v1/players/{id}", headers=headers).text)['data']
-        created_demons = []
-        for demon in more_details['created']:
-            created_demons.append(f"**{demon['name']}** (#{demon['position']})")
-        created_demons = ', '.join(created_demons) if created_demons else "None"
-
-        published_demons = []
-        for demon in more_details['published']:
-            published_demons.append(f"**{demon['name']}** (#{demon['position']})")
-        published_demons = ', '.join(published_demons) if published_demons else "None"
-
-        completed_demons, progress_demons, legacy_demons = [], [], []
-        for record in more_details['records']:
-            if record['progress'] < 100:
-                progress_demons.append(f"**{record['demon']['name']}** {record['progress']}%")
-            elif record['demon']['position'] > 100:
-                if "❌" in record['demon']['name']:
-                    legacy_demons.append(f"*{record['demon']['name']}*")
-                else:
-                    legacy_demons.append(f"{record['demon']['name']}")
-            else:
-                completed_demons.append(f"{record['demon']['name']}")
-
-        completed_demons = ', '.join(completed_demons) if completed_demons else "None"
-        legacy_demons = ', '.join(legacy_demons) if legacy_demons else "None"
-        progress_demons = ', '.join(progress_demons) if progress_demons else "None"
-        cCountry = f":flag_{p['nationality']['country_code'].lower()}:" if p['nationality'] else ":question:"
-        embed = interactions.Embed(color=0xffae00, title=f"{p['name']} {cCountry}")
-        embed.add_field(name="Overview",
-                        value=f"**Rank:** #{rank} {badge}\n **{round(p['score'], 2)}** points\n**Nationality:** {p['nationality']['nation'] if p['nationality'] else 'Unknown'}")
-        embed.add_field(name="Challenges created", value=published_demons)
-        embed.add_field(name="Verified challenges", value=created_demons)
-        embed.add_field(name="Completed challenges", value=(completed_demons[:1021] + "...") if len(completed_demons) > 1020 else completed_demons)
-        embed.add_field(name="Completed challenges (legacy)", value=(legacy_demons[:1021] + "...") if len(legacy_demons) > 1020 else legacy_demons)
-
-        await ctx.send(embeds=embed)
+        await ctx.send(embeds=out)
 
 
 @bot.command(name="submitrecord", description="Submit a challenge record to the list",
@@ -371,13 +335,13 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
                 style=interactions.ButtonStyle.PRIMARY,
                 label="Back",
                 custom_id="back_demon",
-                disabled=False if (250 > pos > 1) else True
+                disabled=False if (300 > pos > 1) else True
             )
             nextDemon = interactions.Button(
                 style=interactions.ButtonStyle.PRIMARY,
                 label="Next",
                 custom_id="next_demon",
-                disabled=False if (pos < 250) else True
+                disabled=False if (pos < 300) else True
             )
             await ctx.send(embeds=out[0], components=[lastDemon, nextDemon])
     else:
