@@ -256,7 +256,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         return tuple([embed, back_button, move_button])
     else:
         actionRow = interactions.ActionRow(components=[back_button, move_button])
-        selMenu = interactions.SelectMenu(options=options, max_value=1, type=interactions.ComponentType.SELECT, custom_id="leaderboard_playermenu")
+        selMenu = interactions.SelectMenu(options=options, max_value=1, type=interactions.ComponentType.SELECT, custom_id="leaderboard_playermenu", placeholder="Select player for more info on them..")
         actionRow2 = interactions.ActionRow(components=[selMenu])
         return tuple([embed, actionRow, actionRow2])
 
@@ -286,6 +286,10 @@ async def getProfile(ctx, name):
         badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
         more_details = to_json(requests.get(f"https://challengelist.gd/api/v1/players/{id}", headers=headers).text)[
             'data']
+
+        for sLevels in ['created', 'published', 'verified', 'records']: # very swag python code
+            more_details.update({sLevels: sorted(more_details[sLevels], key=lambda pos: pos['position'] if sLevels != 'records' else pos['demon']['position'])})
+
         created_demons = []
         for demon in more_details['created']:
             created_demons.append(f"**{demon['name']}** (#{demon['position']})")
@@ -302,6 +306,7 @@ async def getProfile(ctx, name):
         verified_demons = ', '.join(verified_demons) if verified_demons else "None"
 
         completed_demons, legacy_demons, removed_demons = [], [], []
+
         for record in more_details['records']:
             if record['demon']['position'] > 100:
                 if "❌" in record['demon']['name']:
@@ -319,19 +324,23 @@ async def getProfile(ctx, name):
         cCountry = f":flag_{p['nationality']['country_code'].lower()}:" if p['nationality'] else ":question:"
 
         embed = interactions.Embed(color=0xffae00, title=f"{p['name']} {cCountry}")
+        thumb = None
+        if more_details['records'] and more_details['records'][0]['status'] == 'approved':
+            thumb = await getVidThumbnail(more_details['records'][0]['video'])
+
 
         embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
         embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
         embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
         embed.add_field(name="Challenges created", value=created_demons, inline=True)
-        embed.add_field(name="Published challenges", value=published_demons, inline=True)
+        #embed.add_field(name="Published challenges", value=published_demons, inline=True)
         embed.add_field(name="Verified challenges", value=verified_demons, inline=True)
-
+        print(verified_demons.count(","), len(created_demons), completed_demons.count(","))
         embed.add_field(name="Completed challenges",
-                        value=(completed_demons[:1021] + "...") if len(completed_demons) > 1020 else completed_demons, inline=True)
+                        value=(completed_demons[:700] + "...") if len(completed_demons) > 700 else completed_demons)
         embed.add_field(name="Completed challenges (legacy)",
-                        value=(legacy_demons[:1021] + "...") if len(legacy_demons) > 1020 else legacy_demons)
+                        value=(legacy_demons[:500] + "...") if len(legacy_demons) > 500 else legacy_demons)
         embed.add_field(name="Completed challenges (removed)",
-                        value=(removed_demons[:1021] + "...") if len(removed_demons) > 1020 else removed_demons)
+                        value=(removed_demons[:700] + "...") if len(removed_demons) > 700 else removed_demons)
         return embed
 

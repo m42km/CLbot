@@ -12,7 +12,7 @@ headers = {"User-Agent": agent}
 @alru_cache()
 async def correctLevel(ctx, s: str, challenge_names: tuple, button_id: str = None):
     matches = get_close_matches(s.lower(), challenge_names, cutoff=0.85)
-
+    print(matches)
     if not matches:
         c = 0.85
         while c > 0.7:
@@ -20,6 +20,14 @@ async def correctLevel(ctx, s: str, challenge_names: tuple, button_id: str = Non
             matches = get_close_matches(s.lower(), challenge_names, cutoff=c)
             if not (not matches):
                 break
+        if not matches:  # removed challenges check
+            c = 0.85
+            while c > 0.75:
+                c -= 0.05
+                matches = get_close_matches("❌" + s.lower() + "❌", challenge_names, cutoff=c)
+                if not (not matches):
+                    break
+
     if len(matches) > 1:
         desc = f"<@{ctx.user.id}>, multiple matches for levels were found for `{s}`. Please select the one you meant:\n"
         i = 0

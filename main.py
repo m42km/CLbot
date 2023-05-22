@@ -26,22 +26,27 @@ presence = interactions.ClientPresence(activities=[activity])
 
 bot = interactions.Client(token=token, presence=presence)
 
-
-
 sql_connection = create_connection(sql_creds['host'], sql_creds['database'], sql_creds['username'], sql_creds['password'])
 
 challenge_names_list = ()
+modals = {}
+lvlsLimit = 300
+
 async def updateLevels():
+    global lvlsLimit
     global challenge_names_list
     levels_list = []
     i = 0
-    while i <= 300:
+    while i <= lvlsLimit:
         r = to_json(requests.get(f"https://challengelist.gd/api/v1/demons/?limit=50&after={i}", headers=headers).text)
         #print(r)
+        if not r:
+            break
         for level in r:
             levels_list.append(level['name'].lower())
             #print(level['name'])
         i += 50
+    lvlsLimit = len(levels_list)
     challenge_names_list = tuple(levels_list)
     print("Reloaded challenges")
 
@@ -50,7 +55,7 @@ async def on_ready():
     await updateLevels()
     print(f"Bot online and logged in as {bot} in guilds {bot.guilds}")
     while True:
-        await asyncio.sleep(300)
+        await asyncio.sleep(lvlsLimit)
         await updateLevels() # update levels
 
 # @bot.command(name="linkdiscord", description="Link your discord to your Challenge List profile!",
@@ -179,10 +184,14 @@ async def countrycorrect_button(ctx: interactions.ComponentContext):
              options=[interactions.Option(name="limit", description="How many challenges to show (limit is 25)", type=interactions.OptionType.INTEGER, required=False, min_value=5, max_value=25, value=10),
                       interactions.Option(name="page", description="Challenges page (depends on limit parameter if provided)", type=interactions.OptionType.INTEGER, required=False)])
 async def challenges(ctx: interactions.CommandContext, limit: int = None, page: int = None):
-    if not limit or limit > 25:
+    if not limit:
         limit = 10
 
-    title = f"Challenge List (Top {limit})"
+    if page:
+        title = f"Challenge List ({limit * page}-{limit * page + limit})"
+    else:
+        title = f"Challenge List (Top {limit})"
+
     embed = await getChallenges(limit, 0 if not page else page * limit, title)
     if not embed:
         await ctx.send("**Error:** Page does not exist!")
@@ -277,26 +286,107 @@ async def profile(ctx: interactions.CommandContext, name: str):
         await ctx.send(embeds=out)
 
 
-@bot.command(name="submitrecord", description="Submit a challenge record to the list",
-             options=[interactions.Option(name="challenge", type=interactions.OptionType.STRING, required=True, description="Challenge name"),
-                      interactions.Option(name="player", type=interactions.OptionType.STRING, required=True, description="Player"),
-                      interactions.Option(name="video", type=interactions.OptionType.STRING, required=True, description="Progress video link"),
-                      interactions.Option(name="raw_footage", type=interactions.OptionType.STRING, required=True, description="Raw footage link"),
-                      interactions.Option(name="note", type=interactions.OptionType.STRING, required=False, description="Note")
-                      ])
-async def submitrecord(ctx: interactions.CommandContext, challenge, player, video, raw_footage, note):
-    cChallenge = interactions.TextInput(
-        style=interactions.TextStyleType.SHORT,
-        label="Challenge",
-        custom_id="mod_chess_input",
-        min_length=1,
-        max_length=6
+@bot.command(name="submitrecord", description="Submit a challenge record to the list")
+async def submitrecord(ctx: interactions.CommandContext):
+    field_challenge = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT, label="Challenge (leave blank for \" \")", custom_id="submitrecord_challenge",
+        min_length=1, required=False)
+
+    field_player = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT, label="Player name", custom_id="submitrecord_player",
+        min_length=1, required=True)
+
+    field_video = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT, label="Video link (youtube, bilibili, etc.)", custom_id="submitrecord_video",
+        min_length=10, required=True)
+
+    field_rawfootage = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT, label="Raw footage link", custom_id="submitrecord_rawfootage",
+        min_length=10, required=True)
+
+    field_note = interactions.TextInput(
+        style=interactions.TextStyleType.SHORT, label="Note (optional)", custom_id="submitrecord_note",
+        min_length=1, required=False)
+
+    modal = interactions.Modal(title="Submit List Completion Form", custom_id="modal_submitrecord",
+                               components=[field_challenge, field_player, field_video, field_rawfootage, field_note])
+    await ctx.popup(modal)
+
+@bot.modal("modal_submitrecord")
+async def submitrecord_confirmation(ctx: interactions.ComponentContext, challenge, player, video, raw_footage, note):
+    modals.update({int(ctx.user.id): (challenge, player, video, raw_footage, note)})
+    cLevel = await correctLevel(ctx, challenge, challenge_names_list, button_id="submitrecord_autocorrect")
+    if not cLevel:
+        await ctx.send(content=f"<@{ctx.user.id}>, the level you submitted a completion for cannot be found. Please check the name and try again.", ephemeral=True)
+        return
+    if type(cLevel) == tuple:
+        await ctx.send(embed=cLevel[0], components=cLevel[1:])
+        return
+    if not to_json(requests.get(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={player}", headers=headers).text):
+        await ctx.send(content=f"<@{ctx.user.id}>, the player you submitted a completion for cannot be found. Please check the name and try again.",ephemeral=True)
+        return
+
+    embed = interactions.Embed(title="List Completion Confirmation", description=f"<@{ctx.user.id}>, please review the details you submitted for your list completion:")
+    for detail in [["Challenge", challenge if challenge else "\" \""], ["Player", player], ["Video link", video], ["Raw footage link", raw_footage], ["Note", note if note else "None"]]:
+        embed.add_field(name=detail[0], value=detail[1])
+
+    confirm_button = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Confirm",
+        custom_id="submitrecord_confirm"
+    )
+    cancel_button = interactions.Button(
+        style=interactions.ButtonStyle.DANGER,
+        label="Cancel",
+        custom_id="submitrecord_cancel"
     )
 
+    await ctx.send(content=f"<@{ctx.user.id}>", embeds=embed, components=[confirm_button, cancel_button], ephemeral=True)
+
+@bot.component("submitrecord_autocorrect")
+async def submitrecord_autocorrect(ctx: interactions.ComponentContext):
+    modal_data = modals[ctx.user.id]
+    challenge, player, video, raw_footage, note = modal_data
+
+    embed = interactions.Embed(title="List Completion Confirmation",
+                               description=f"<@{ctx.user.id}>, please review the details you submitted for your list completion:")
+    for detail in [["Challenge", challenge if challenge else "\" \""], ["Player", player], ["Video link", video],
+                   ["Raw footage link", raw_footage], ["Note", note if note else "None"]]:
+        embed.add_field(name=detail[0], value=detail[1])
+
+    confirm_button = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Confirm",
+        custom_id="submitrecord_confirm"
+    )
+    cancel_button = interactions.Button(
+        style=interactions.ButtonStyle.DANGER,
+        label="Cancel",
+        custom_id="submitrecord_cancel"
+    )
+
+    await ctx.send(content=f"<@{ctx.user.id}>", embeds=embed, components=[confirm_button, cancel_button],
+                   ephemeral=True)
+
+@bot.component("submitrecord_cancel")
+async def submitecord_cancel(ctx: interactions.ComponentContext):
+    await ctx.send("**List completion submission cancelled.**")
+
+@bot.component("submitrecord_confirm")
+async def submitrecord_confirmed(ctx: interactions.ComponentContext):
+    embed = ctx.message.embeds[0]
+
+    challenge = embed.fields[0].value
+    player = embed.fields[1].value
+    video = embed.fields[2].value
+    raw_footage = embed.fields[3].value
+    note = embed.fields[4].value if embed.fields[4].value != "None" else None
     try:
         # find ID
-        cLevel = await correctLevel(challenge)
-        demon_id = requests.get(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}", headers=headers).json()[0]["id"]
+        if challenge != "\" \"":
+            demon_id = 249 # the exception
+        else:
+            demon_id = requests.get(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}",headers=headers).json()[0]["id"]
 
         r = requests.post("https://challengelist.gd/api/v1/records/",
                           json={"demon": demon_id, "player": player, "video": video,
@@ -304,25 +394,21 @@ async def submitrecord(ctx: interactions.CommandContext, challenge, player, vide
                                 "note": (note + f" (Requested with CLBot by {ctx.author.user.username}#{ctx.author.user.discriminator} / {int(ctx.author.user.id)})") if note
                                 else f"Requested with CLBot by {ctx.author.user.username}#{ctx.author.user.discriminator} / {int(ctx.author.user.id)}",
                                 "progress": 100}, headers=headers)
-
+        print("ok")
+        await ctx.send(f"**<@{ctx.user.id}>, record sent successfully!**")
     except Exception as e:
         await ctx.send("**Error:** `" + str(e) + "`")
-    else:
-        if r.status_code == 200:
-            await ctx.send(f"**Record sent successfully:** `{r.text}`")
-        else:
-            await ctx.send("**Couldn't send request, response code `" + str(r.status_code) + "`**")
 
 @bot.command(name="getchallenge", description="Lookup completions of a challenge (make sure to use one of the two options)",
              options=[interactions.Option(name="level", description="Level name (not case-sensitive)", type=interactions.OptionType.STRING, required=False),
                       interactions.Option(name="position", description="List position", type=interactions.OptionType.INTEGER, required=False)])
 async def getchallenge(ctx: interactions.CommandContext, level: str = None, position: int = None):
     g_level = None
-    if not level and not position:
-        await ctx.send("**Error:** No arguments provided!")
-        return
-    if level:
-        out = await showChallenge(ctx, lvl_name=level, challenge_names=challenge_names_list)
+    if level or not level and not position:
+        if not level:
+            out = await showChallenge(ctx, lvl_name=" ", challenge_names=challenge_names_list)
+        else:
+            out = await showChallenge(ctx, lvl_name=level, challenge_names=challenge_names_list)
         if type(out) == dict:
             out = out['autocorrect_resp']
             await ctx.send(embeds=out[0], components=out[1])
@@ -335,13 +421,13 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
                 style=interactions.ButtonStyle.PRIMARY,
                 label="Back",
                 custom_id="back_demon",
-                disabled=False if (300 > pos > 1) else True
+                disabled=False if (lvlsLimit >= pos > 1) else True
             )
             nextDemon = interactions.Button(
                 style=interactions.ButtonStyle.PRIMARY,
                 label="Next",
                 custom_id="next_demon",
-                disabled=False if (pos < 300) else True
+                disabled=False if (pos <= lvlsLimit) else True
             )
             await ctx.send(embeds=out[0], components=[lastDemon, nextDemon])
     else:
@@ -350,13 +436,13 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
             style=interactions.ButtonStyle.PRIMARY,
             label="Back",
             custom_id="back_demon",
-            disabled=False if (250 > position > 1) else True
+            disabled=False if (lvlsLimit >= position > 1) else True
         )
         nextDemon = interactions.Button(
             style=interactions.ButtonStyle.PRIMARY,
             label="Next",
             custom_id="next_demon",
-            disabled=False if (position < 250) else True
+            disabled=False if (position <= lvlsLimit) else True
         )
         await ctx.send(embeds=out, components=[lastDemon, nextDemon])
 
@@ -368,13 +454,13 @@ async def levelcorrect(ctx: interactions.ComponentContext):
         style=interactions.ButtonStyle.PRIMARY,
         label="Back",
         custom_id="back_demon",
-        disabled=False if (250 > position > 1) else True
+        disabled=False if (lvlsLimit >= position > 1) else True
     )
     nextDemon = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Next",
         custom_id="next_demon",
-        disabled=False if (position < 250) else True
+        disabled=False if (position <= lvlsLimit) else True
     )
 
     await ctx.send(embed=embed, components=[lastDemon, nextDemon])
@@ -389,13 +475,13 @@ async def nextchallenge(ctx: interactions.CommandContext):
         style=interactions.ButtonStyle.PRIMARY,
         label="Back",
         custom_id="back_demon",
-        disabled=False if (250 > pos > 1) else True
+        disabled=False if (lvlsLimit >= pos > 1) else True
     )
     nextDemon = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Next",
         custom_id="next_demon",
-        disabled=False if (pos < 250) else True
+        disabled=False if (pos <= lvlsLimit) else True
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
@@ -409,13 +495,13 @@ async def backchallenge(ctx: interactions.CommandContext):
         style=interactions.ButtonStyle.PRIMARY,
         label="Back",
         custom_id="back_demon",
-        disabled=False if (250 > pos > 1) else True
+        disabled=False if (lvlsLimit >= pos > 1) else True
     )
     nextDemon = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Next",
         custom_id="next_demon",
-        disabled=False if (pos < 250) else True
+        disabled=False if (pos <= lvlsLimit) else True
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
