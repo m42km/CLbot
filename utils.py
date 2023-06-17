@@ -1,12 +1,20 @@
-from autocorrect import *
+from math import ceil
+from typing import Union
+
 import aiohttp
+from interactions import ActionRow
+
+from autocorrect import *
 
 verifySSL = True
 session = aiohttp.ClientSession()
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 headers = {"User-Agent": agent}
-profiles = {}
+profileCache = {} # profile embed cache
+profileCompsCache = {} # profile completion cache
+# sample: {384: {'completions': completionsJson, 'baseEmbed': embed, 'detailComps': components}}
+embedCol2 = 0xfafa00
 
 async def setSSL(bool_val: bool):
     global verifySSL
@@ -16,9 +24,9 @@ async def setSession(newSession: aiohttp.ClientSession):
     global session
     session = newSession
 
-async def clearProfiles():
-    global profiles
-    profiles = {}
+async def clearCache():
+    global profileCache
+    profileCache = {}
 
 async def requestGET(rSession: aiohttp.ClientSession, url: str) -> dict:
     resp = await rSession.get(url) # asynchronous goodness awaits..
@@ -29,53 +37,70 @@ async def requestPOST(rSession: aiohttp.ClientSession, url: str, data: dict):
     resp = await rSession.post(url, data=data)
     return resp
 
+async def packActionRows(options: Union[list[interactions.SelectOption], tuple[interactions.SelectOption]]) -> list[interactions.ActionRow]:
+    """Packs large amounts of completion options in multiple action rows."""
+    optionsAmt = 20
+    fOptions = [options[x:x+optionsAmt] for x in range(0, len(options), optionsAmt)]
+    menus = []
+    optionsLength = len(fOptions)
+    for opts in enumerate(fOptions):
+        selMenu = interactions.SelectMenu(options=opts[1], placeholder=f"({opts[0] + 1}/{optionsLength}) Select completion for more info...", custom_id="completions_menu")
+        actionRow = interactions.ActionRow(components=[selMenu])
+        menus.append(actionRow)
+    return menus
+
 @alru_cache(maxsize=1000)
-async def getSubstring(s, after, before):
-    print(s.index(after) + len(after), s.index(before))
+async def getSubstr(s, after, before):
     return s[s.index(after) + len(after): s.index(before)]
 
-@alru_cache(maxsize=400)
-async def leaderboardDetails(title):
+@alru_cache(maxsize=500)
+async def leaderboardDetails(title) -> tuple:
     """Returns after, limit & country from title."""
     country = None
     after = 0
     if "in" in title:
-        country = int(await getSubstring(title, "in ", ")"))
+        country = int(await getSubstr(title, "in ", ")"))
         if "Top" in title:
             # Challenge List Leaderboard (Top 10 in Argentina)
-            limit = int(await getSubstring(title, "Top ", " in"))
+            limit = int(await getSubstr(title, "Top ", " in"))
         else:
             # Challenge List Leaderboard (#11-20 in Argentina)
-            after = int(await getSubstring(title, "#", "-")) - 1
-            limit = int(await getSubstring(title, "-", " in")) - after
+            after = int(await getSubstr(title, "#", "-")) - 1
+            limit = int(await getSubstr(title, "-", " in")) - after
     else:
         if "Top" in title:
             # Challenge List Leaderboard (Top 10)
-            limit = int(await getSubstring(title, "op ", ")"))
+            limit = int(await getSubstr(title, "op ", ")"))
         else:
             # Challenge List Leaderboard (#11-20)
-            after = int(await getSubstring(title, "#", "-")) - 1
-            limit = int(await getSubstring(title, "-", ")")) - after
+            after = int(await getSubstr(title, "#", "-")) - 1
+            limit = int(await getSubstr(title, "-", ")")) - after
 
     return country, after, limit
 
-@alru_cache(maxsize=300)
-async def calcPoints(n): # calculates list points, n is position
+@alru_cache(maxsize=500)
+async def calcPoints(n) -> float: # calculates list points, n is position
     return round(259.688*(0.962695**n), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
 @alru_cache(maxsize=300)
-async def getVidThumbnail(url): # video URL to thumbnail
+async def getVidThumbnail(url, main=True) -> str: # video URL to thumbnail
     vCode = url.split("=")[1]
-    return "https://i3.ytimg.com/vi/" + vCode + "/maxresdefault.jpg"
+    return "https://i3.ytimg.com/vi/" + vCode + ("/maxresdefault.jpg" if main else "/1.jpg")
 
 @alru_cache(maxsize=300)
-async def remLastChar(s: str):
+async def remLastChar(s: str) -> str:
     l = len(s) - 2
     return s[0:l]
 
+async def checkInteractionPerms(ctx: interactions.ComponentContext) -> bool:
+    if not str(ctx.user.id) in ctx.message.embeds[0].footer.text:
+        await ctx.send(f"<@{int(ctx.user.id)}>, you cannot interact with this bot message. Please run your own command.", ephemeral=True)
+        return False
+    else:
+        return True
 
-async def getChallenges(limit, after, title, challenges_list: list[dict] = None):
+async def getChallenges(ctx: Union[interactions.ComponentContext, interactions.CommandContext], limit, after, title, challenges_list: tuple[dict] = None):
     if not challenges_list:
         r = await requestGET(session, f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}")
     else:
@@ -98,20 +123,19 @@ async def getChallenges(limit, after, title, challenges_list: list[dict] = None)
                         value=f"Verified by **{verifier}** | [**Video**]({video})\n**{points}** points",
                         inline=True)
     embed.set_thumbnail(await getVidThumbnail(r[0]['video']))
+    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
     if not options:
         return
     else:
         selMenu = interactions.SelectMenu(options=options, max_value=1, type=interactions.ComponentType.SELECT, custom_id="getchallenges_menu", placeholder="Select challenge for more info on it..")
         actionRow = interactions.ActionRow(components=[selMenu])
-        print(selMenu, actionRow)
         return embed, actionRow
 
-async def showChallenge(context, lvl_name: str = None, lvl_pos: int = None, challenge_names: tuple = None, embedCol: int = 0xffae00):
+async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challenge_names: tuple = None, embedCol: int = 0xffae00):
     g_level = None
     if lvl_name:
-        cLevel = await correctLevel(context, lvl_name, challenge_names=challenge_names)
+        cLevel = await correctLevel(ctx, lvl_name, challenge_names=challenge_names)
         if type(cLevel) == tuple:
-            print(cLevel)
             return tuple(cLevel)
         if not cLevel:
             levels = []
@@ -128,7 +152,7 @@ async def showChallenge(context, lvl_name: str = None, lvl_pos: int = None, chal
             if len(levels) > 1:
                 g_level = levels[0]
         elif len(levels) < 1:
-            await context.send("**Error:** Couldn't find any levels with that name. Did you misspell it or something?")
+            await ctx.send("**Error:** Couldn't find any levels with that name. Did you misspell it or something?")
             return None
         else:
             g_level = levels[0]
@@ -152,7 +176,7 @@ async def showChallenge(context, lvl_name: str = None, lvl_pos: int = None, chal
         if completion['status'] != "approved" or completion['player']['banned']:  # skip the record if this happens
             continue
 
-        p_flag = f" :flag_{completion['nationality']['country_code'].lower()}:" if completion['nationality'] else ":united_nations:"
+        p_flag = f" :flag_{completion['nationality']['country_code'].lower()}:" if completion['nationality'] else " :united_nations:"
         p_name = completion['player']['name']
         c_progress = completion['progress']
 
@@ -172,7 +196,7 @@ async def showChallenge(context, lvl_name: str = None, lvl_pos: int = None, chal
 
     embed = interactions.Embed(color=embedCol, title=f"{position}. {name}")
     embed.set_thumbnail(url=thumbnail)
-
+    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
     info = (("Creator(s)", creator),
             ("Verifier", f"[{verifier}]({verification_video})"),
             ("Level ID", level_id if level_id else "N/A"),
@@ -198,8 +222,7 @@ async def showChallenge(context, lvl_name: str = None, lvl_pos: int = None, chal
         l = len(embed.fields) - 1 # how many embed fields there are
         embed.fields[l].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
         embed.fields[l].name = embed.fields[l].name.split('-')[0] + '...)'
-    print(embed)
-    return embed if not lvl_name else embed, f_level['position']
+    return embed if lvl_pos else (embed, f_level['position'])
 
 @alru_cache(maxsize=300)
 async def chLeaderboardPageDisable(limit, after, country=None):
@@ -224,7 +247,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         limit = 10
 
     move_button = interactions.Button(
-        style=interactions.ButtonStyle.PRIMARY,
+        style=interactions.ButtonStyle.SUCCESS,
         label="Next Page",
         custom_id="nextpage_leaderboard"
     )
@@ -240,19 +263,20 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
     disableNext, disableNextAft = await chLeaderboardPageDisable(limit, after, cCountry)
     if disableNext or len(r) < limit:
         move_button.disabled = True
-    print(after)
+
     if after == 0 or not after:
         title = f"Challenge List Leaderboard (Top {limit}{(' in ' + cCountry) if cCountry else ''})"
     else:
         title = f"Challenge List Leaderboard (#{after + 1}-{limit + after}{(' in ' + cCountry) if cCountry else ''})"
-    embed = interactions.Embed(color=0xffae00,
-                               title=title)
+
+    embed = interactions.Embed(color=0xffae00, title=title)
+    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
     if len(r) == 0:
         embed.add_field(name="None", value="")
         move_button.disabled, back_button.disabled = True, True
         return embed, back_button, move_button
     for player in r:
-        country_emoji = f":flag_{player['nationality']['country_code'].lower()}:" if player['nationality'] else ":united_nations:"
+        country_emoji = f":flag_{player['nationality']['country_code'].lower()}:" if player['nationality'] else " :united_nations:"
         name, rank, points = player['name'], player['rank'], round(player['score'], 2)
         # Leaderboard options & fields
         options.append(interactions.SelectOption(
@@ -271,99 +295,155 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         actionRow2 = interactions.ActionRow(components=[selMenu])
         return tuple([embed, actionRow, actionRow2])
 
-async def getProfile(name, completionLinks: bool = False, embedCol: int = 0xffae00):
-    """Returns a profile embed or returns ``None`` if player can't be found."""
+async def getProfileCompletions(name: str, p_id: int, completions: list, page: int = 1) -> Union[None, tuple[ActionRow, ActionRow]]:
+    if not completions:
+        return None
+    cachedData = profileCompsCache.get(p_id)
+    if cachedData:
+        return cachedData[0][page - 1], cachedData[1][page - 1]
+    opts = []
+    buttonSets = []
+    for record in completions:
+        opts.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']}",
+                                              value=f'comp,{record["demon"]["name"]},{name},{record["video"][32:]},{record["demon"]["position"]}',
+                                              description=f"{await calcPoints(record['demon']['position'])} points"))
+    fOpts = await packActionRows(opts)
+    optionsLength = len(fOpts)
+    for menu in enumerate(fOpts):
+        backButton = interactions.Button(label="Last Page (Completions)",
+                                         custom_id="backpage_completions",
+                                         style=interactions.ButtonStyle.PRIMARY,
+                                         disabled=True if menu[0] == 0 else False)
+
+        nextButton = interactions.Button(label="Next Page (Completions)",
+                                         custom_id="nextpage_completions",
+                                         style=interactions.ButtonStyle.SUCCESS,
+                                         disabled=True if menu[0] >= optionsLength - 1 else False)
+
+        buttonActionRow = interactions.ActionRow(components=[backButton, nextButton])
+        buttonSets.append(buttonActionRow)
+
+    comps = (fOpts, buttonSets)
+
+    profileCompsCache.update({p_id: comps})
+    # comps = tuple[ActionRow], tuple[tuple[Button]]
+    return fOpts[0], buttonSets[0]
+    # returns one actionrow and a tuple of two buttons
+
+async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0xffae00, completionsPage: int = 1):
+    """Returns a profile embed, a profile embed and components or returns ``None`` if player can't be found."""
     p = await requestGET(session, f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}")
     if not p:
         # adding an autocorrect to profiles would probably require indexing every player (over 300 and counting).
         # that might not be ideal
         return None
-    else:
-        # get the correct user
-        if len(p) > 1:
-            i = 0
-            for player in p:
-                if len(player['name']) == name:
-                    p = p[i]
-                    break
-                else:
-                    i += 1
-            if len(p) > 1:
-                p = p[0]
-        else:
-            p = p[0]
-
-        p_id = p['id']
-
-        cachedEmbed = profiles.get(p_id)
-        if cachedEmbed:
-            return cachedEmbed
-
-        rank = p['rank']
-        badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
-        more_details = (await requestGET(session, f"https://challengelist.gd/api/v1/players/{p_id}"))[
-            'data']
-
-        for sLevels in ['created', 'published', 'verified', 'records']: # very swag python code
-            more_details.update({sLevels: sorted(more_details[sLevels], key=lambda pos: pos['position'] if sLevels != 'records' else pos['demon']['position'])})
-
-        created_demons = []
-        for demon in more_details['created']:
-            created_demons.append(f"**{demon['name']}** (#{demon['position']})")
-        created_demons = ', '.join(created_demons) if created_demons else "None"
-
-        published_demons = []
-        for demon in more_details['published']:
-            published_demons.append(f"**{demon['name']}** (#{demon['position']})")
-        published_demons = ', '.join(published_demons) if published_demons else "None"
-
-        verified_demons = []
-        for demon in more_details['verified']:
-            verified_demons.append(f"**{demon['name']}** (#{demon['position']})")
-        verified_demons = ', '.join(verified_demons) if verified_demons else "None"
-
-        completed_demons, legacy_demons, removed_demons = [], [], []
-        options = []
-        for record in more_details['records']:
-            if record['demon']['position'] > 100:
-                if "❌" in record['demon']['name']:
-                    removed_demons.append(f"*{record['demon']['name']}*")
-                else:
-                    legacy_demons.append(f"{record['demon']['name']}")
+    # get the correct user
+    if len(p) > 1:
+        i = 0
+        for player in p:
+            if len(player['name']) == name:
+                p = p[i]
+                break
             else:
-                completed_demons.append(f"{record['demon']['name']}")
-            if completionLinks:
-                options.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']} ", value=f'completion_{record["demon"]["name"]}_{name}'))
+                i += 1
+        if len(p) > 1:
+            p = p[0]
+    else:
+        p = p[0]
 
-        # i wish there was a better way to do this......
-        completed_demons = ', '.join(completed_demons) if completed_demons else "None"
-        legacy_demons = ', '.join(legacy_demons) if legacy_demons else "None"
-        removed_demons = ', '.join(removed_demons) if removed_demons else "None"
+    p_id = p['id']
+    name = p['name']
+    # cached embeds & completions
+    cachedData = profileCache.get(p_id)
+    if cachedData:
+        embed = cachedData['baseEmbed']
+        if completionLinks:
+            components = await getProfileCompletions(name, p_id, cachedData['completions'], completionsPage)
+            return embed, list(components)
+        else:
+            return embed
 
-        cCountry = f":flag_{p['nationality']['country_code'].lower()}:" if p['nationality'] else ":united_nations:"
+    rank = p['rank']
+    badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
+    more_details = (await requestGET(session, f"https://challengelist.gd/api/v1/players/{p_id}"))[
+        'data']
 
-        embed = interactions.Embed(color=embedCol, title=f"{p['name']} {cCountry}")
-        thumb = None
-        if more_details['records'] and more_details['records'][0]['status'] == 'approved':
-            thumb = await getVidThumbnail(more_details['records'][0]['video'])
+    for sLevels in ['created', 'published', 'verified', 'records']: # very swag python code
+        more_details.update({sLevels: sorted(more_details[sLevels], key=lambda pos: pos['position'] if sLevels != 'records' else pos['demon']['position'])})
 
-        embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
-        embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
-        embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
-        embed.add_field(name="Challenges created", value=created_demons, inline=True)
-        # embed.add_field(name="Published challenges", value=published_demons, inline=True)
-        embed.add_field(name="Verified challenges", value=verified_demons, inline=True)
+    created_demons = []
+    for demon in more_details['created']:
+        created_demons.append(f"**{demon['name']}** (#{demon['position']})")
+    created_demons = ', '.join(created_demons) if created_demons else "None"
 
-        embed.add_field(name="Completed challenges",
-                        value=(completed_demons[:700] + "...") if len(completed_demons) > 700 else completed_demons)
-        embed.add_field(name="Completed challenges (legacy)",
-                        value=(legacy_demons[:500] + "...") if len(legacy_demons) > 500 else legacy_demons)
-        embed.add_field(name="Completed challenges (removed)",
-                        value=(removed_demons[:700] + "...") if len(removed_demons) > 700 else removed_demons)
-        embed.set_thumbnail(url=thumb)
-        profiles.update({p_id: embed})
-        return embed
+    verified_demons = []
+    for demon in more_details['verified']:
+        verified_demons.append(f"**{demon['name']}** (#{demon['position']})")
+    verified_demons = ', '.join(verified_demons) if verified_demons else "None"
 
+    completed_demons, legacy_demons, removed_demons = [], [], []
+    options = []
+    for record in more_details['records']:
+        if record['demon']['position'] > 100:
+            if "❌" in record['demon']['name']:
+                removed_demons.append(f"*{record['demon']['name']}*")
+            else:
+                legacy_demons.append(f"{record['demon']['name']}")
+        else:
+            completed_demons.append(f"{record['demon']['name']}")
+        options.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']} ",
+                                                 value=f'comp|{record["demon"]["name"]}|{p["name"]}|{record["video"][32:]}|{record["demon"]["position"]}',
+                                                 description=f"{await calcPoints(record['demon']['position'])} points"))
+    # i wish there was a better way to do this......
+    completed_demons = ', '.join(completed_demons) if completed_demons else "None"
+    legacy_demons = ', '.join(legacy_demons) if legacy_demons else "None"
+    removed_demons = ', '.join(removed_demons) if removed_demons else "None"
 
-async def checkInteractionPerms(ctx: interactions.ComponentContext):
-    pass
+    cCountry = f":flag_{p['nationality']['country_code'].lower()}:" if p['nationality'] else ":united_nations:"
+
+    embed = interactions.Embed(color=embedCol, title=f"{p['name']} {cCountry}")
+
+    thumb = None
+    if more_details['records'] and more_details['records'][0]['status'] == 'approved':
+        thumb = await getVidThumbnail(more_details['records'][0]['video'])
+
+    charLimit = 250
+    embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
+    embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
+    embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
+    embed.add_field(name="Challenges created", value=created_demons, inline=True)
+    embed.add_field(name="Verified challenges", value=verified_demons, inline=True if len(verified_demons) < 200 else False)
+    embed.add_field(name="Completed challenges",
+                    value=(completed_demons[:charLimit] + "...") if len(completed_demons) > charLimit else completed_demons)
+    embed.add_field(name="Completed challenges (legacy)",
+                    value=(legacy_demons[:charLimit] + "...") if len(legacy_demons) > charLimit else legacy_demons)
+    embed.add_field(name="Completed challenges (removed)",
+                    value=(removed_demons[:charLimit] + "...") if len(removed_demons) > charLimit else removed_demons)
+    embed.set_thumbnail(url=thumb)
+    # sample: {384: {'completions': completionsJson, 'baseEmbed': embed, 'detailComps': components}}
+    components = None
+    if completionLinks:
+        components = await getProfileCompletions(name, p_id, more_details['records'], page=completionsPage)
+
+    profileCache.update({p_id: {"baseEmbed": embed, "completions": more_details['records']}})
+    if completionLinks:
+        pages = ceil(len(more_details['records']) / 10)
+        embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}",
+                         icon_url=ctx.user.avatar_url)
+    return embed if not completionLinks else [embed, components]
+
+async def showCompletion(valsString: str):
+    vals = valsString.split(",")
+    name, player, link, pos = vals[1], vals[2], "https://youtube.com/watch?v=" + vals[3], vals[4]
+    suffix = "'s" if not name.lower().endswith(('s', 'z')) else "'"
+
+    embed = interactions.Embed(title=f"{player}{suffix} {name} Completion", color=embedCol2)
+    embed.add_field(name="Completion Link", value=link)
+    embed.add_field(name="Position", value="#" + pos, inline=True)
+    embed.add_field(name="List Points", value=str(await calcPoints(int(pos))), inline=True)
+
+    img = await getVidThumbnail(link)
+    thumb = await getVidThumbnail(link, main=False)
+    embed.set_image(url=img)
+    embed.set_thumbnail(url=thumb)
+    return embed

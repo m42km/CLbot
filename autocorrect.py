@@ -10,7 +10,6 @@ headers = {"User-Agent": agent}
 @alru_cache()
 async def correctLevel(ctx, s: str, challenge_names: tuple, button_id: str = None):
     matches = get_close_matches(s.lower(), challenge_names, cutoff=0.85)
-    print(matches)
     if not matches:
         c = 0.85
         while c > 0.7:
@@ -29,7 +28,6 @@ async def correctLevel(ctx, s: str, challenge_names: tuple, button_id: str = Non
     if len(matches) > 1:
         desc = f"<@{ctx.user.id}>, multiple matches for levels were found for `{s}`. Please select the one you meant:\n"
         i = 0
-        print("hi")
         while i < len(matches):
             desc += f"**{i + 1}.** {matches[i]}\n"
             i += 1
@@ -60,7 +58,6 @@ async def correctCountry(ctx, s: str, limit):
     if len(matches) > 1:
         desc = f"<@{ctx.user.id}>, multiple matches for countries were found for `{s}`. Please select the one you meant:\n"
         i = 0
-        print("hi")
         while i < len(matches):
             desc += f"**{i + 1}.** {matches[i]}\n"
             i += 1

@@ -30,13 +30,11 @@ async def updateLevels():
     i = 0
     while i <= lvlsLimit:
         r = await requestGET(session, f"https://challengelist.gd/api/v1/demons/?limit=50&after={i}")
-        #print(r)
         if not r:
             break
         for level in r:
             levels_list.append(level)
             level_names_list.append(level['name'].lower())
-            #print(level['name'])
         i += 50
 
     lvlsLimit = len(level_names_list)
@@ -54,7 +52,7 @@ async def on_ready():
     while True:
         await asyncio.sleep(300)
         await updateLevels()
-        await clearProfiles()
+        await clearCache()
 
 @bot.command(name="leaderboard", description="Shows the top 10 players (currently)",
              options=[interactions.Option(name="page", description="Leaderboard page to show", type=interactions.OptionType.INTEGER, required=False),
@@ -69,17 +67,18 @@ async def leaderboard(ctx: interactions.CommandContext, page: int = None, limit:
         return
 
 @bot.component("backpage_leaderboard")
-async def backpage_leaderboard(ctx: interactions.CommandContext):
+async def backpage_leaderboard(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
     title = ctx.message.embeds[0].title
     country, after, limit = await leaderboardDetails(title)
     after -= limit
 
     out = await getLeaderboard(ctx, limit, country, after=after, autocorrect=False)
-    print(out)
     await ctx.edit(content="", embeds=out[0], components=[out[1], out[2]])
 
 @bot.component("nextpage_leaderboard")
 async def nextpage_leaderboard(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
     title = ctx.message.embeds[0].title
     country, after, limit = await leaderboardDetails(title)
     after += limit
@@ -89,13 +88,14 @@ async def nextpage_leaderboard(ctx: interactions.ComponentContext):
 
 @bot.component("leaderboard_playermenu")
 async def leaderboard_playersel(ctx: interactions.ComponentContext, val):
-    out = await getProfile(val[0].split("_")[2], False, embedCol=embedCol2)
+    if not await checkInteractionPerms(ctx): return
+    out = await getProfile(ctx, val[0].split("_")[2], False, embedCol=embedCol2)
     if out:
         await ctx.edit(content="", embeds=[ctx.message.embeds[0], out], components=ctx.message.components)
 
 @bot.component("countrycorrect")
 async def countrycorrect_button(ctx: interactions.ComponentContext):
-    d = await ctx.defer()
+    if not await checkInteractionPerms(ctx): return
     if int(ctx.user.id) != int(ctx.message.embeds[0].split("@")[1].split(">")[0]):
         await ctx.send("This is not your command.", ephemeral=True)
         return
@@ -104,9 +104,8 @@ async def countrycorrect_button(ctx: interactions.ComponentContext):
     cCountry = ctx.component.label
     embed = await getLeaderboard(ctx, int(limit), cCountry, 0, autocorrect=False)
 
-    after = 0
     move_button = interactions.Button(
-        style=interactions.ButtonStyle.PRIMARY,
+        style=interactions.ButtonStyle.SUCCESS,
         label="Next Page",
         custom_id="nextpage_leaderboard",
         disabled=False
@@ -131,13 +130,13 @@ async def challenges(ctx: interactions.CommandContext, limit: int = None, page: 
     else:
         title = f"Challenge List (Top {limit})"
 
-    embed = await getChallenges(limit, 0 if not page else page * limit, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
+    embed = await getChallenges(ctx, limit, 0 if not page else page * limit, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
     if not embed:
         await ctx.send("**Error:** Page does not exist!")
         return
 
     move_button = interactions.Button(
-        style=interactions.ButtonStyle.PRIMARY,
+        style=interactions.ButtonStyle.SUCCESS,
         label="Next Page",
         custom_id="nextpage_challenges",
         disabled=False
@@ -153,6 +152,7 @@ async def challenges(ctx: interactions.CommandContext, limit: int = None, page: 
 
 @bot.component("getchallenges_menu")
 async def getchallenges_menusel(ctx: interactions.ComponentContext, option: interactions.SelectOption):
+    if not await checkInteractionPerms(ctx): return
     name = option[0].split("_")[1]
     origEmbed = ctx.message.embeds[0]
     origComponents = ctx.message.components
@@ -162,10 +162,11 @@ async def getchallenges_menusel(ctx: interactions.ComponentContext, option: inte
     await ctx.edit(content="", embeds=[origEmbed, embed], components=origComponents)
 
 @bot.component("nextpage_challenges")
-async def challenges_nextpage(ctx: interactions.CommandContext):
+async def challenges_nextpage(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
+
     embed = ctx.message.embeds[0]
     title = embed.title
-    limit = 25
     if "-" in title:
         # (#11-20)
         after = int(embed.fields[0].name.split("**")[1].split(".")[0]) - 1
@@ -179,25 +180,27 @@ async def challenges_nextpage(ctx: interactions.CommandContext):
         after = limit
     title = f"Challenge List (#{after + 1}-{after + limit})"
 
-    embed = await getChallenges(limit, after, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
+    embed = await getChallenges(ctx, limit, after, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
 
     move_button = interactions.Button(
-        style=interactions.ButtonStyle.PRIMARY,
+        style=interactions.ButtonStyle.SUCCESS,
         label="Next Page",
         custom_id="nextpage_challenges",
-        disabled = False if limit*2 + after <= lvlsLimit else True
+        disabled=False if limit*2 + after <= lvlsLimit else True
     )
     back_button = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Last Page",
         custom_id="backpage_challenges",
-        disabled = False if ((after - limit) >= 0) else True
+        disabled=False if ((after - limit) >= 0) else True
     )
     actionRow = interactions.ActionRow(components=[back_button, move_button])
     await ctx.edit(embeds=[embed[0]], components=[actionRow, embed[1]])
 
 @bot.component("backpage_challenges")
-async def challenges_backpage(ctx: interactions.CommandContext):
+async def challenges_backpage(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
+
     embed = ctx.message.embeds[0]
     title = embed.title
     after = int(embed.fields[0].name.split("**")[1].split(".")[0]) - 1
@@ -207,10 +210,10 @@ async def challenges_backpage(ctx: interactions.CommandContext):
     after -= limit
     title = f"Challenge List (#{after + 1}-{after + limit})" if after > 0 else f"Challenge List (Top {limit})"
 
-    embed = await getChallenges(limit, after, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
+    embed = await getChallenges(ctx, limit, after, title, challenges_list=challenge_levels_list if challenge_levels_list else None)
 
     move_button = interactions.Button(
-        style=interactions.ButtonStyle.PRIMARY,
+        style=interactions.ButtonStyle.SUCCESS,
         label="Next Page",
         custom_id="nextpage_challenges",
         disabled=False if limit*2 + after <= lvlsLimit else True
@@ -230,11 +233,11 @@ async def challenges_backpage(ctx: interactions.CommandContext):
 async def profile(ctx: interactions.CommandContext, name: str):
     # SELECT * FROM users
     # WHERE discord_id = {ctx.user.id};
-    out = await getProfile(name, True)
+    out = await getProfile(ctx, name, True)
     if not out:
         await ctx.send("**Error:** Player could not be found.")
     else:
-        await ctx.send(embeds=out)
+        await ctx.send(embeds=out[0], components=list(out[1]))
 
 
 @bot.command(name="submitrecord", description="Submit a challenge record to the list")
@@ -274,7 +277,7 @@ async def submitrecord_confirmation(ctx: interactions.ComponentContext, challeng
         await ctx.send(embed=cLevel[0], components=cLevel[1:])
         return
     if not await requestGET(session, f"https://challengelist.gd/api/v1/players/ranking/?name_contains={player}"):
-        await ctx.send(content=f"<@{ctx.user.id}>, the player you submitted a completion for cannot be found. Please check the name and try again.",ephemeral=True)
+        await ctx.send(content=f"<@{ctx.user.id}>, the player you submitted a completion for cannot be found. Please check the name and try again.", ephemeral=True)
         return
 
     embed = interactions.Embed(title="List Completion Confirmation", description=f"<@{ctx.user.id}>, please review the details you submitted for your list completion:")
@@ -325,8 +328,9 @@ async def submitecord_cancel(ctx: interactions.ComponentContext):
 
 @bot.component("submitrecord_confirm")
 async def submitrecord_confirmed(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx):
+        return
     embed = ctx.message.embeds[0]
-
     challenge = embed.fields[0].value
     player = embed.fields[1].value
     video = embed.fields[2].value
@@ -353,7 +357,6 @@ async def submitrecord_confirmed(ctx: interactions.ComponentContext):
              options=[interactions.Option(name="level", description="Level name (not case-sensitive)", type=interactions.OptionType.STRING, required=False),
                       interactions.Option(name="position", description="List position", type=interactions.OptionType.INTEGER, required=False)])
 async def getchallenge(ctx: interactions.CommandContext, level: str = None, position: int = None):
-    g_level = None
     if level or not level and not position:
         if not level:
             out = await showChallenge(ctx, lvl_name=" ", challenge_names=challenge_names_list)
@@ -398,6 +401,7 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
 
 @bot.component("levelcorrect")
 async def levelcorrect(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
     lvl = ctx.component.label
     embed, position = await showChallenge(ctx, lvl_name=lvl)
     lastDemon = interactions.Button(
@@ -416,9 +420,9 @@ async def levelcorrect(ctx: interactions.ComponentContext):
     await ctx.edit(embed=embed, components=[lastDemon, nextDemon])
 
 @bot.component("next_demon")
-async def nextchallenge(ctx: interactions.CommandContext):
-
-    pos = int(ctx.message.embeds[0].title.split("#")[1].split(".")[0]) + 1
+async def nextchallenge(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
+    pos = int(await getSubstr(ctx.message.embeds[0].title, "#", ".")) + 1
     embed = await showChallenge(ctx, lvl_pos=pos)
 
     lastDemon = interactions.Button(
@@ -436,8 +440,8 @@ async def nextchallenge(ctx: interactions.CommandContext):
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
 @bot.component("back_demon")
-async def backchallenge(ctx: interactions.CommandContext):
-
+async def backchallenge(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
     pos = int(ctx.message.embeds[0].title.split("#")[1].split(".")[0]) - 1
     embed = await showChallenge(ctx, lvl_pos=pos)
 
@@ -455,15 +459,34 @@ async def backchallenge(ctx: interactions.CommandContext):
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
-@bot.command(name="admin_verifyssl", description="Toggle SSL verification for requests (on by default)")
-async def ssltoggle(ctx: interactions.CommandContext):
-    global verifySSL
-    if int(ctx.user.id) != 797965210501251172:
-        await ctx.send("You are not authorized to use this command.", ephemeral=True)
-    else:
-        verifySSL = True if not verifySSL else False
-        await setSSL(verifySSL)
-        await ctx.send(f"SSL verification toggled {'on' if verifySSL else 'off'}.", ephemeral=True)
+@bot.component("completions_menu")
+async def completions_menusel(ctx: interactions.ComponentContext, val):
+    if not await checkInteractionPerms(ctx):
+        return
+
+    await ctx.send(embeds=(await showCompletion(val[0])), ephemeral=True)
+
+@bot.component("backpage_completions")
+async def completions_backpage(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx):
+        return
+    embed = ctx.message.embeds[0]
+    player = embed.title.split(" :")[0]
+    currPage = int(await getSubstr(ctx.message.components[0].components[0].placeholder, "(", "/"))
+    out = await getProfile(ctx, player, completionLinks=True, completionsPage=currPage - 1)
+    await ctx.edit(embeds=out[0], components=out[1])
+
+@bot.component("nextpage_completions")
+async def completions_nextpage(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx):
+        return
+    embed = ctx.message.embeds[0]
+    player = embed.title.split(" :")[0]
+
+    currPage = int(await getSubstr(ctx.message.components[0].components[0].placeholder, "(", "/"))
+    out = await getProfile(ctx, player, completionLinks=True, completionsPage=currPage + 1)
+
+    await ctx.edit(embeds=out[0], components=out[1])
 
 
 bot.start()
