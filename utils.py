@@ -1,9 +1,9 @@
-from math import ceil
+
 from typing import Union
 
 import aiohttp
 from interactions import ActionRow
-
+from async_lru import alru_cache
 from autocorrect import *
 
 verifySSL = True
@@ -37,6 +37,34 @@ async def requestPOST(rSession: aiohttp.ClientSession, url: str, data: dict):
     resp = await rSession.post(url, data=data)
     return resp
 
+@alru_cache(maxsize=2000)
+async def getLinkInfo(link: str) -> tuple[int, int, str]:
+    new = link.replace("-", " ").replace(":", "(").replace(";", ")")
+    args = new.split("=")[1].split("|")
+    # limit|after|title
+    limit, after, title = int(args[0]), int(args[1]), args[2]
+    return limit, after, title
+
+@alru_cache(maxsize=2000)
+async def getChallsTitle(limit: int, page: int = None, after: int = None) -> str:
+    if not page and not after:
+        return f"Challenge List (Top {limit})"
+    levelStart = ((limit * page) if page else after) + 1
+    levelEnd = levelStart + limit - 1
+    if levelEnd > 100 and levelStart < 100:
+        return f"Challenge List (#{levelStart}-100 and #101-{levelEnd} Legacy List)"
+    if levelStart >= 100:
+        return f"Challenge Legacy List (#{levelStart}-{levelEnd})"
+
+    return f"Challenge List (#{levelStart}-{levelEnd})"
+
+@alru_cache(maxsize=2000)
+async def buildChallsLinkStr(limit, page, title: str) -> str:
+    newTitle = title.replace(" ", "-")
+    currLink = f"https://challengelist.gd/challenges?inf={limit}|{page*limit}|{newTitle}"
+    fixedLink = currLink.replace("(", ":").replace(")", ";")
+    return fixedLink
+
 async def packActionRows(options: Union[list[interactions.SelectOption], tuple[interactions.SelectOption]]) -> list[interactions.ActionRow]:
     """Packs large amounts of completion options in multiple action rows."""
     optionsAmt = 20
@@ -48,6 +76,22 @@ async def packActionRows(options: Union[list[interactions.SelectOption], tuple[i
         actionRow = interactions.ActionRow(components=[selMenu])
         menus.append(actionRow)
     return menus
+
+@alru_cache(maxsize=500)
+async def getChallButtons(lvlsLimit, pos):
+    lastDemon = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Back",
+        custom_id="back_demon",
+        disabled=False if (lvlsLimit >= pos > 1) else True
+    )
+    nextDemon = interactions.Button(
+        style=interactions.ButtonStyle.SUCCESS,
+        label="Next",
+        custom_id="next_demon",
+        disabled=False if (pos <= lvlsLimit) else True
+    )
+    return lastDemon, nextDemon
 
 @alru_cache(maxsize=1000)
 async def getSubstr(s, after, before):
@@ -109,21 +153,28 @@ async def getChallenges(ctx: Union[interactions.ComponentContext, interactions.C
         return None
     embed = interactions.Embed(color=0xffae00, title=title)
     options = []
-    for demon in r:
+    mod = 2
+    for i, demon in enumerate(r):
         name, pos, creator, verifier, video = demon['name'], demon['position'], demon['publisher']['name'], \
                                               demon['verifier']['name'], demon['video']
         points = await calcPoints(pos)
         # Add options and embed fields for all levels
         options.append(interactions.SelectOption(
             label=f"{name if name else 'blank'} by {creator}",
-            value=f"selectchall_{name if name else 'blank'}",
+            value=f"selectchall_{pos}",
             description=f"#{pos} - {points} points",
         ))
         embed.add_field(name=f"**{pos}. {name}** by **{creator}**",
-                        value=f"Verified by **{verifier}** | [**Video**]({video})\n**{points}** points",
+                        value=f"Verified by [**{verifier}**]({video}) - **{points}** points",
                         inline=True)
-    embed.set_thumbnail(await getVidThumbnail(r[0]['video']))
-    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
+        if i % mod == 0:
+            embed.add_field(name="\u200B", value="\n", inline=True)
+    wLink = await buildChallsLinkStr(limit, round(after / limit), title)
+    embed.set_video(url=wLink)
+    embed.set_thumbnail(url=(await getVidThumbnail(r[0]['video'])))
+    embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
+    embed.description = f"Challenge List Website: [Link]({wLink})"
+
     if not options:
         return
     else:
@@ -136,7 +187,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
     if lvl_name:
         cLevel = await correctLevel(ctx, lvl_name, challenge_names=challenge_names)
         if type(cLevel) == tuple:
-            return tuple(cLevel)
+            return {'autocorrect_resp': tuple(cLevel)}
         if not cLevel:
             levels = []
         else:
@@ -196,8 +247,9 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
 
     embed = interactions.Embed(color=embedCol, title=f"{position}. {name}")
     embed.set_thumbnail(url=thumbnail)
-    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
+    embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
     info = (("Creator(s)", creator),
+            ("\u200B", "\u200B"),
             ("Verifier", f"[{verifier}]({verification_video})"),
             ("Level ID", level_id if level_id else "N/A"),
             ("FPS(s)", fps),
@@ -217,7 +269,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
             victorCount += full_victors[i].count(',') + 1
     else:
         embed.add_field(name="Challenge victors", value=full_victors[0] if full_victors[0] else "None!", inline=False)
-    while len(str(embed._json)) > 5900: # shorten amount of victors if too large
+    while len(str(embed._json)) > 5500: # shorten amount of victors if too large
         embed.remove_field(len(embed.fields) - 1)
         l = len(embed.fields) - 1 # how many embed fields there are
         embed.fields[l].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
@@ -270,12 +322,12 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         title = f"Challenge List Leaderboard (#{after + 1}-{limit + after}{(' in ' + cCountry) if cCountry else ''})"
 
     embed = interactions.Embed(color=0xffae00, title=title)
-    embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
+    embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
     if len(r) == 0:
         embed.add_field(name="None", value="")
         move_button.disabled, back_button.disabled = True, True
         return embed, back_button, move_button
-    for player in r:
+    for i, player in enumerate(r):
         country_emoji = f":flag_{player['nationality']['country_code'].lower()}:" if player['nationality'] else " :united_nations:"
         name, rank, points = player['name'], player['rank'], round(player['score'], 2)
         # Leaderboard options & fields
@@ -286,7 +338,8 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         ))
         embed.add_field(name=f"{rank}. {name} {country_emoji}", value=f"**{points}** points",
                         inline=True)
-
+        if (i) % 2 == 0:
+            embed.add_field(name="\u200B", value="\u200B", inline=True)
     if not options:
         return tuple([embed, back_button, move_button])
     else:
@@ -427,15 +480,14 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
 
     profileCache.update({p_id: {"baseEmbed": embed, "completions": more_details['records']}})
     if completionLinks:
-        pages = ceil(len(more_details['records']) / 10)
-        embed.set_footer(text=f"Requested by {ctx.user.username} | ID: {str(ctx.user.id)}",
+        embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}",
                          icon_url=ctx.user.avatar_url)
     return embed if not completionLinks else [embed, components]
 
 async def showCompletion(valsString: str):
     vals = valsString.split(",")
     name, player, link, pos = vals[1], vals[2], "https://youtube.com/watch?v=" + vals[3], vals[4]
-    suffix = "'s" if not name.lower().endswith(('s', 'z')) else "'"
+    suffix = "'s" if not name.lower().endswith('s') and not name.lower().endswith('z') else "'"
 
     embed = interactions.Embed(title=f"{player}{suffix} {name} Completion", color=embedCol2)
     embed.add_field(name="Completion Link", value=link)
