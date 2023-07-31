@@ -204,7 +204,7 @@ async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, st
         return await errorEmbed(e)
 
 async def editDaily(dtype: str, dailynum: int, dictReplace: dict):
-    r = await dUpdate(dailyChallenges, {"dtype": dtype, "num": dailynum}, dictReplace)
+    r = await dUpdate(dailyChallenges, {"dtype": dtype, "num": dailynum}, {"$set": dictReplace})
     dailyname = dtype.capitalize() if dtype != "daily1" and dtype != "daily2" \
         else f"Double Daily Friday {dtype[5]}"
     if type(r) != interactions.Embed:

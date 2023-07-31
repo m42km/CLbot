@@ -752,6 +752,9 @@ async def edit_daily(ctx: interactions.CommandContext, dailytype: str, dailynum:
     if dailyid:
         name, creator = await levelDetails(dailyid)
         editDict.update({"level_id": str(dailyid)})
+        editDict.update({"name": name})
+        editDict.update({"creator": creator})
+
     if coolstars:
         editDict.update({"stars": coolstars})
     op = await editDaily(dailytype, dailynum, editDict)
