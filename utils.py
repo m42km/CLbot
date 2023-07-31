@@ -94,7 +94,7 @@ async def getChallButtons(lvlsLimit, pos):
     return lastDemon, nextDemon
 
 @alru_cache(maxsize=1000)
-async def getSubstr(s, after, before) -> str:
+async def getSubstr(s: str, after: str, before: str) -> str:
     return s[s.index(after) + len(after): s.index(before)]
 
 @alru_cache(maxsize=500)

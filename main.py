@@ -1,19 +1,18 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from utils import *
 from daily import *
-
 import asyncio
 import interactions
 import interactions.utils
 from typing import Union
 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
 createdAt = (datetime.now() - datetime(1970, 1, 1)).total_seconds()
 currDaily = 0
 currDailies = {}
+dailyCol = 0xfafa45
 
 token = os.getenv("TOKEN")
 
@@ -23,9 +22,11 @@ dailySubsChannel: Union[interactions.Channel, None] = None
 dailyQueueChannel: Union[interactions.Channel, None] = None
 doubleFriday = None
 
-dailyCurrSubs: dict[str, dict[int, interactions.Message]] = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {}, "monthly": {}}
+dailyCurrSubs: dict[str, dict[int, interactions.Message]] = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
+                                                             "monthly": {}}
 dailyCurrAccepted: dict[str, list] = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
-dailyCmdQueue: dict[int, dict[str, Union[str, bool, int]]] = {34822: {"dtype": "daily", "doubledaily": False}} # Pending video submissions
+dailyCmdQueue: dict[int, dict[str, Union[str, bool, int]]] = {
+    34822: {"dtype": "daily", "doubledaily": False}}  # Pending video submissions
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 headers = {"User-Agent": agent}
@@ -37,13 +38,12 @@ bot = interactions.Client(token=token, presence=presence)
 challenge_names_list, challenge_levels_list = (), ()
 modals = {}
 
-
 lvlsLimit = 300
 embedCol2 = 0xfafa00
 verifySSL = True  # turn this off if weird stuff happens
 
-async def updateLevels():
 
+async def updateLevels():
     global lvlsLimit, challenge_names_list, challenge_levels_list
     level_names_list = []
     levels_list = []
@@ -63,6 +63,7 @@ async def updateLevels():
     challenge_levels_list = tuple(levels_list)
     print("[INFO] Reloaded challenges")
 
+
 @bot.event
 async def on_ready():
     global dailySubsChannel, dailyQueueChannel, \
@@ -71,11 +72,11 @@ async def on_ready():
 
     dailySubsChannel = await interactions.get(client=bot, obj=interactions.Channel, object_id=dailySubsChannelID)
     dailyQueueChannel = await interactions.get(client=bot, obj=interactions.Channel, object_id=dailyQueueChannelID)
-
     asyncSession = aiohttp.ClientSession(headers=headers)
+
+    await dailyLocalCollect()
     await setSession(asyncSession)
     await updateLevels()
-
     print(f"Bot online and logged in as {bot.me.name} in guilds: {bot.guilds}")
 
     i = 0
@@ -89,6 +90,7 @@ async def on_ready():
             await updateLevels()
             await clearCache()
         i += 1
+
 
 @bot.command(name="leaderboard", description="Shows the top 10 players (currently)",
              options=[interactions.Option(name="page", description="Leaderboard page to show",
@@ -105,6 +107,7 @@ async def leaderboard(ctx: interactions.CommandContext, page: int = None, limit:
     else:
         return
 
+
 @bot.component("backpage_leaderboard")
 async def backpage_leaderboard(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx): return
@@ -114,6 +117,7 @@ async def backpage_leaderboard(ctx: interactions.ComponentContext):
 
     out = await getLeaderboard(ctx, limit, country, after=after, autocorrect=False)
     await ctx.edit(content="", embeds=out[0], components=[out[1], out[2]])
+
 
 @bot.component("nextpage_leaderboard")
 async def nextpage_leaderboard(ctx: interactions.ComponentContext):
@@ -125,12 +129,14 @@ async def nextpage_leaderboard(ctx: interactions.ComponentContext):
     out = await getLeaderboard(ctx, limit, country, after=after, autocorrect=False)
     await ctx.edit(content="", embeds=out[0], components=[out[1], out[2]])
 
+
 @bot.component("leaderboard_playermenu")
 async def leaderboard_playersel(ctx: interactions.ComponentContext, val):
     if not await checkInteractionPerms(ctx): return
     out = await getProfile(ctx, val[0].split("_")[2], False, embedCol=embedCol2)
     if out:
         await ctx.edit(content="", embeds=[ctx.message.embeds[0], out], components=ctx.message.components)
+
 
 @bot.component("countrycorrect")
 async def countrycorrect_button(ctx: interactions.ComponentContext):
@@ -156,6 +162,7 @@ async def countrycorrect_button(ctx: interactions.ComponentContext):
         disabled=True
     )
     await ctx.send(embeds=[embed], components=[back_button, move_button])
+
 
 @bot.command(name="challenges", description="Shows the top challenges",
              options=[interactions.Option(name="limit", description="How many challenges to show (limit is 25)",
@@ -187,6 +194,7 @@ async def challenges(ctx: interactions.CommandContext, limit: int = 10, page: in
     actionRow = interactions.ActionRow(components=[back_button, move_button])
     await ctx.send(embeds=[embed[0]], components=[actionRow, embed[1]])
 
+
 @bot.component("getchallenges_menu")
 async def getchallenges_menusel(ctx: interactions.ComponentContext, option: interactions.SelectOption):
     if not await checkInteractionPerms(ctx): return
@@ -196,6 +204,7 @@ async def getchallenges_menusel(ctx: interactions.ComponentContext, option: inte
 
     embed = await showChallenge(ctx, lvl_pos=pos, challenge_names=challenge_names_list, embedCol=embedCol2)
     await ctx.edit(content="", embeds=[origEmbed, embed], components=origComponents)
+
 
 @bot.component("nextpage_challenges")
 async def challenges_nextpage(ctx: interactions.ComponentContext):
@@ -378,13 +387,15 @@ async def submitrecord_confirmed(ctx: interactions.ComponentContext):
         if challenge != "\" \"":
             demon_id = 249  # the exception
         else:
-            demon_id = (await requestGET(session, f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0]["id"]
+            demon_id = \
+            (await requestGET(session, f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[
+                0]["id"]
 
         r = await requestPOST(session, "https://challengelist.gd/api/v1/records/",
                               data={"demon": demon_id, "player": player, "video": video,
                                     "raw_footage": raw_footage,
                                     "note": (
-                                                note + f" (Requested with CLBot by {ctx.author.user.username}#{ctx.author.user.discriminator} / {int(ctx.author.user.id)})") if note
+                                            note + f" (Requested with CLBot by {ctx.author.user.username}#{ctx.author.user.discriminator} / {int(ctx.author.user.id)})") if note
                                     else f"Requested with CLBot by {ctx.author.user.username}#{ctx.author.user.discriminator} / {int(ctx.author.user.id)}",
                                     "progress": 100})
         await ctx.send(f"**<@{ctx.user.id}>**, record sent successfully!**")
@@ -420,6 +431,7 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
         buttons = await getChallButtons(lvlsLimit, position)
         await ctx.send(embeds=out, components=buttons)
 
+
 @bot.component("levelcorrect")
 async def levelcorrect(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx): return
@@ -439,6 +451,7 @@ async def levelcorrect(ctx: interactions.ComponentContext):
     )
 
     await ctx.edit(embed=embed, components=[lastDemon, nextDemon])
+
 
 @bot.component("next_demon")
 async def nextchallenge(ctx: interactions.ComponentContext):
@@ -460,6 +473,7 @@ async def nextchallenge(ctx: interactions.ComponentContext):
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
+
 @bot.component("back_demon")
 async def backchallenge(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx): return
@@ -480,12 +494,14 @@ async def backchallenge(ctx: interactions.ComponentContext):
     )
     await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
 
+
 @bot.component("completions_menu")
 async def completions_menusel(ctx: interactions.ComponentContext, val):
     if not await checkInteractionPerms(ctx):
         return
 
     await ctx.send(embeds=(await showCompletion(val[0])), ephemeral=True)
+
 
 @bot.component("backpage_completions")
 async def completions_backpage(ctx: interactions.ComponentContext):
@@ -496,6 +512,7 @@ async def completions_backpage(ctx: interactions.ComponentContext):
     currPage = int(await getSubstr(ctx.message.components[0].components[0].placeholder, "(", "/"))
     out = await getProfile(ctx, player, completionLinks=True, completionsPage=currPage - 1)
     await ctx.edit(embeds=out[0], components=out[1])
+
 
 @bot.component("nextpage_completions")
 async def completions_nextpage(ctx: interactions.ComponentContext):
@@ -508,6 +525,7 @@ async def completions_nextpage(ctx: interactions.ComponentContext):
     out = await getProfile(ctx, player, completionLinks=True, completionsPage=currPage + 1)
 
     await ctx.edit(embeds=out[0], components=out[1])
+
 
 @bot.component("levelcorrect0")
 @bot.component("levelcorrect1")
@@ -529,6 +547,7 @@ async def autocorrect_challenge(ctx: interactions.ComponentContext):
     )
     await ctx.edit(embeds=embed, components=[lastDemon, nextDemon])
 
+
 # == DAILY FEATURES ==
 
 @bot.component("daily_rejectsub")
@@ -537,8 +556,10 @@ async def daily_rejectcompletion(ctx: interactions.ComponentContext):
     mTitle = f"{dType} Completion #{dailynum} Rejection Form"
     modal = interactions.Modal(title=f"{dType} Completion #{dailynum} Rejection", custom_id="daily_rejectmodal",
                                components=[interactions.TextInput(style=interactions.TextStyleType.SHORT,
-                                                                  label="Reason", custom_id="reason", min_length=3, required=True)])
+                                                                  label="Reason", custom_id="reason", min_length=3,
+                                                                  required=True)])
     await ctx.popup(modal=modal)
+
 
 @bot.modal("daily_rejectmodal")
 async def daily_rejectconf(ctx: interactions.ComponentContext, reason):
@@ -547,17 +568,23 @@ async def daily_rejectconf(ctx: interactions.ComponentContext, reason):
     if dKey in dailyCurrSubs.keys():
         dailyCurrSubs[dKey].pop(int(user.id))
     await ctx.message.delete()
-    await ctx.send(f"{ctx.user.mention}, {dType} submission #{dailynum} from {user.mention} was rejected :white_check_mark:")
-    await user.send(f"Your submission for {dType} #{dailynum} was unfortunately rejected by <@{ctx.user.id}> for reason: `{reason}`. Please contact them and/or try submitting your completion again."
-                    if doubleDaily else f"Your double daily #{dailynum} submission was unfortunately rejected by <@{ctx.user.id}> for reason: `{reason}`. Please contact them and/or try submitting your completion again.")
+    await ctx.send(
+        f"{ctx.user.mention}, {dType} submission #{dailynum} from {user.mention} was rejected :white_check_mark:")
+    await user.send(
+        f"Your submission for {dType} #{dailynum} was unfortunately rejected by <@{ctx.user.id}> for reason: `{reason}`. Please contact them and/or try submitting your completion again."
+        if doubleDaily else f"Your double daily #{dailynum} submission was unfortunately rejected by <@{ctx.user.id}> for reason: `{reason}`. Please contact them and/or try submitting your completion again.")
+
 
 @bot.component("daily_acceptsub")
 async def daily_acceptcompletion(ctx: interactions.ComponentContext):
     dailynum, dType, doubleDaily = await getDailyDetails(ctx.message.content, bot, token, getUser=False)
     modal = interactions.Modal(title=f"{dType} Completion #{dailynum} Acceptance", custom_id="daily_acceptmodal",
                                components=[interactions.TextInput(style=interactions.TextStyleType.SHORT,
-                                                                  label="Confirmation: don't type anything here!", custom_id="confirmation", min_length=4, required=False)])
+                                                                  label="Confirmation: don't type anything here!",
+                                                                  custom_id="confirmation", min_length=4,
+                                                                  required=False)])
     await ctx.popup(modal=modal)
+
 
 @bot.modal("daily_acceptmodal")
 async def daily_acceptconf(ctx: interactions.ComponentContext, confirmation=None):
@@ -567,9 +594,11 @@ async def daily_acceptconf(ctx: interactions.ComponentContext, confirmation=None
         dailyCurrSubs[dKey].pop(int(user.id))
         dailyCurrAccepted[dKey].append(int(user.id))
     await ctx.message.delete()
-    await ctx.send(f"{ctx.user.mention}, {dType} submission #{dailynum} from {user.mention} was accepted :white_check_mark:")
+    await ctx.send(
+        f"{ctx.user.mention}, {dType} submission #{dailynum} from {user.mention} was accepted :white_check_mark:")
     await user.send(f"Your submission for {dType} #{dailynum} was accepted!" if doubleDaily else
                     f"Your double daily #{dailynum} submission was accepted!")
+
 
 @bot.command(name="daily_sendcomp", description="Send a daily completion",
              options=[interactions.Option(name="dtype",
@@ -577,9 +606,9 @@ async def daily_acceptconf(ctx: interactions.ComponentContext, confirmation=None
                                           type=interactions.OptionType.STRING,
                                           required=True,
                                           choices=[
-                                                interactions.Choice(name="Daily", value="daily"),
-                                                interactions.Choice(name="Weekly", value="weekly"),
-                                                interactions.Choice(name="Monthly", value="monthly"),
+                                              interactions.Choice(name="Daily", value="daily"),
+                                              interactions.Choice(name="Weekly", value="weekly"),
+                                              interactions.Choice(name="Monthly", value="monthly"),
                                           ]),
                       interactions.Option(name="doubledaily",
                                           description="If the submission is for double daily friday, which daily did you beat?",
@@ -604,6 +633,7 @@ async def daily_submitcompletion(ctx: interactions.CommandContext, dtype: str, d
 
     dailyCmdQueue.update({userID: {"dtype": dtype, "doubledaily": doubledaily}})
     await ctx.send("Please reply to this message with or send in this channel **a video** of your completion.")
+
 
 @bot.command(name="daily_cancelcomp", description="Cancel your daily submission.",
              options=[interactions.Option(name="dtype",
@@ -635,7 +665,7 @@ async def daily_cancelcomp(ctx: interactions.CommandContext, dtype: str, doubled
         await ctx.send(f"Submission cancelled.")
 
 @bot.event
-async def on_message_create(eventMsg: interactions.Message): # New message handler
+async def on_message_create(eventMsg: interactions.Message):  # New message handler
     userID = int(eventMsg.author.id)
     if eventMsg.channel_id != dailySubsChannelID or not userID in dailyCmdQueue.keys() or not eventMsg.attachments:
         return
@@ -647,23 +677,109 @@ async def on_message_create(eventMsg: interactions.Message): # New message handl
     dKey = dtype if not doubledaily else doubledaily
 
     fixedUrl = await fixEmbedVideo(eventMsg.attachments[0].url)
-    msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + ("" if not doubledaily else f" (DDF #{doubledaily[5]})")
+    msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + (
+        "" if not doubledaily else f" (DDF #{doubledaily[5]})")
     msg += f"\n**User:** <@{userID}>\n**Proof Link:** {fixedUrl}"
 
     dMsg = await dailyQueueChannel.send(content=msg, components=[dailyAcceptButton, dailyRejectButton])
     dailyCmdQueue.pop(userID)
     dailyCurrSubs[dKey].update({userID: dMsg})
-    await eventMsg.reply(f"{dtype.capitalize()} #{currDailies[dtype]} completion submitted! Please wait a couple days for daily managers to review your submission.")
-
+    await eventMsg.reply(
+        f"{dtype.capitalize()} #{currDailies[dtype]} completion submitted! Please wait a couple days for daily managers to review your submission.")
 
 # test command / will remove later
 @bot.command(name="senddaily", description="send daily", options=[
     interactions.Option(name="dailyid", type=interactions.OptionType.INTEGER, required=True, description="Daily ID"),
     interactions.Option(name="dailytype", type=interactions.OptionType.INTEGER, required=True, description="Daily ID"),
     interactions.Option(name="channel", type=interactions.OptionType.CHANNEL, required=True, description="Channel"),
-    interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=True, description="cool stars")])
+    interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=True,
+                        description="cool stars")])
 async def senddaily(ctx, dailyid: int, dailytype: str, channel: interactions.Channel, coolstars: int):
     await postDaily(channel, dailyid, currDaily, coolstars)
     await ctx.send("Doned")
+
+@bot.command(name="daily_addpoints", description="Add points", options=[
+    interactions.Option(name="duser", type=interactions.OptionType.USER, required=True, description="Daily user"),
+    interactions.Option(name="points", type=interactions.OptionType.INTEGER, required=True, description="Points to add")
+])
+async def daily_addpoints(ctx: interactions.CommandContext, duser: interactions.User, points: int):
+    pts = await addPoints(int(duser.id), points)
+    await ctx.send(embeds=pts)
+
+@bot.command(name="daily_setpoints", description="Set points", options=[
+    interactions.Option(name="user", type=interactions.OptionType.USER, required=True, description="Daily user"),
+    interactions.Option(name="points", type=interactions.OptionType.INTEGER, required=True, description="Points to set")
+])
+async def daily_setpoints(ctx: interactions.CommandContext, user: interactions.User, points: int):
+    pts = await setPoints(int(user.id), points)
+    await ctx.send(embeds=pts)
+
+@bot.command(name="daily_points", description="View a player's daily points", options=[interactions.Option(name="user", type=interactions.OptionType.USER, required=True, description="Daily user")])
+async def daily_points(ctx: interactions.CommandContext, user: interactions.User):
+    ptsEmbed = await getPoints(int(user.id))
+    await ctx.send(embeds=ptsEmbed)
+
+@bot.command(name="daily_addchall", description="Add a daily challenge", options=[
+    interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily type",
+                        choices=[
+                            interactions.Choice(name="Daily", value="daily"),
+                            interactions.Choice(name="Weekly", value="weekly"),
+                            interactions.Choice(name="Monthly", value="monthly"),
+                            interactions.Choice(name="DDF #1", value="daily1"),
+                            interactions.Choice(name="DDF #2", value="daily2"),
+                        ]),
+    interactions.Option(name="dailynum", type=interactions.OptionType.INTEGER, required=True, description="Daily number"),
+    interactions.Option(name="dailyid", type=interactions.OptionType.INTEGER, required=True, description="Daily ID"),
+    interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=True, description="cool stars")])
+async def add_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: int, dailyid: int, coolstars: int):
+    op = await addDaily(str(ctx.user.id), str(dailyid), dailytype, dailynum, coolstars)
+    await ctx.send(embeds=op)
+
+@bot.command(name="daily_editchall", description="Edit a daily challenge", options=[
+    interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily ID",
+                        choices=[
+                            interactions.Choice(name="Daily", value="daily"),
+                            interactions.Choice(name="Weekly", value="weekly"),
+                            interactions.Choice(name="Monthly", value="monthly"),
+                            interactions.Choice(name="DDF #1", value="daily1"),
+                            interactions.Choice(name="DDF #2", value="daily2"),
+                        ]),
+    interactions.Option(name="dailynum", type=interactions.OptionType.INTEGER, required=True, description="Daily number"),
+    interactions.Option(name="dailyid", type=interactions.OptionType.INTEGER, required=False, description="Daily ID"),
+    interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=False, description="cool stars")])
+async def edit_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: int, dailyid: Union[int, None] = None, coolstars: Union[int, None] = None):
+    editDict = {}
+    if dailyid:
+        name, creator = await levelDetails(dailyid)
+        editDict.update({"level_id": str(dailyid)})
+    if coolstars:
+        editDict.update({"stars": coolstars})
+    op = await editDaily(dailytype, dailynum, editDict)
+    await ctx.send(embeds=op)
+
+
+@bot.command(name="daily_leaderboard", description="View daily leaderboard", options=[interactions.Option(name="page", type=interactions.OptionType.INTEGER, required=False, description="Leaderboard page",
+                                                                                                          min_value=1, max_value=230),
+                                                                                      interactions.Option(name="limit", type=interactions.OptionType.INTEGER, required=False, description="Limit of players",
+                                                                                                          min_value=5, max_value=20)])
+async def daily_leaderboard(ctx: interactions.CommandContext, page: int = 1, limit: int = 10):
+    embed, backButton, nextButton = await dailyLeaderboard(ctx, page, limit)
+    await ctx.send(embeds=embed, components=[backButton, nextButton])
+
+@bot.component("dleaderboard_back")
+async def dailyLeaderboardBack(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
+    page, limit = await dLeaderboardDetails(ctx.message.embeds[0].title)
+    page -= 1
+    embed, backButton, nextButton = await dailyLeaderboard(ctx, page, limit)
+    await ctx.edit(embeds=embed, components=[backButton, nextButton])
+
+@bot.component("dleaderboard_next")
+async def dailyLeaderboardNext(ctx: interactions.ComponentContext):
+    if not await checkInteractionPerms(ctx): return
+    page, limit = await dLeaderboardDetails(ctx.message.embeds[0].title)
+    page += 1
+    embed, backButton, nextButton = await dailyLeaderboard(ctx, page, limit)
+    await ctx.edit(embeds=embed, components=[backButton, nextButton])
 
 bot.start()
