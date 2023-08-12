@@ -94,7 +94,7 @@ async def getChallButtons(lvlsLimit, pos):
     return lastDemon, nextDemon
 
 @alru_cache(maxsize=1000)
-async def getSubstr(s, after, before):
+async def getSubstr(s: str, after: str, before: str) -> str:
     return s[s.index(after) + len(after): s.index(before)]
 
 @alru_cache(maxsize=500)
@@ -134,8 +134,8 @@ async def getVidThumbnail(url, main=True) -> str: # video URL to thumbnail
 
 @alru_cache(maxsize=300)
 async def remLastChar(s: str) -> str:
-    l = len(s) - 2
-    return s[0:l]
+    length = len(s) - 2
+    return s[0:length]
 
 async def checkInteractionPerms(ctx: interactions.ComponentContext) -> bool:
     if not str(ctx.user.id) in ctx.message.embeds[0].footer.text:
@@ -169,6 +169,7 @@ async def getChallenges(ctx: Union[interactions.ComponentContext, interactions.C
                         inline=True)
         if i % mod == 0:
             embed.add_field(name="\u200B", value="\n", inline=True)
+    embed.add_field(name="\u200B", value="\n", inline=True)
     wLink = await buildChallsLinkStr(limit, round(after / limit), title)
     embed.set_video(url=wLink)
     embed.set_thumbnail(url=(await getVidThumbnail(r[0]['video'])))
@@ -271,9 +272,9 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
         embed.add_field(name="Challenge victors", value=full_victors[0] if full_victors[0] else "None!", inline=False)
     while len(str(embed._json)) > 5500: # shorten amount of victors if too large
         embed.remove_field(len(embed.fields) - 1)
-        l = len(embed.fields) - 1 # how many embed fields there are
-        embed.fields[l].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
-        embed.fields[l].name = embed.fields[l].name.split('-')[0] + '...)'
+        lenFields = len(embed.fields) - 1 # how many embed fields there are
+        embed.fields[lenFields].value += f" ... [(10+ more)](https://challengelist.gd/challenges/{g_level['position']})"
+        embed.fields[lenFields].name = embed.fields[lenFields].name.split('-')[0] + '...)'
     return embed if lvl_pos else (embed, f_level['position'])
 
 @alru_cache(maxsize=300)
@@ -338,7 +339,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         ))
         embed.add_field(name=f"{rank}. {name} {country_emoji}", value=f"**{points}** points",
                         inline=True)
-        if (i) % 2 == 0:
+        if i % 2 == 0:
             embed.add_field(name="\u200B", value="\u200B", inline=True)
     if not options:
         return tuple([embed, back_button, move_button])
@@ -460,7 +461,7 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
     if more_details['records'] and more_details['records'][0]['status'] == 'approved':
         thumb = await getVidThumbnail(more_details['records'][0]['video'])
 
-    charLimit = 250
+    charLimit = 125
     embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
     embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
     embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
@@ -483,6 +484,22 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
         embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}",
                          icon_url=ctx.user.avatar_url)
     return embed if not completionLinks else [embed, components]
+
+@alru_cache(maxsize=512)
+async def getChallButtons(lvlsLimit, pos) -> tuple[interactions.Button, interactions.Button]:
+    lastDemon = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Back",
+        custom_id="back_demon",
+        disabled=False if (lvlsLimit >= pos > 1) else True
+    )
+    nextDemon = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Next",
+        custom_id="next_demon",
+        disabled=False if (pos <= lvlsLimit) else True
+    )
+    return lastDemon, nextDemon
 
 async def showCompletion(valsString: str):
     vals = valsString.split(",")
