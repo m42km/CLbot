@@ -2,3 +2,6 @@ discord-py-interactions==4.4.0
 aiohttp
 asyncio
 async_lru
+gd.py
+motor
+python-dotenv

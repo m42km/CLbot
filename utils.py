@@ -461,7 +461,7 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
     if more_details['records'] and more_details['records'][0]['status'] == 'approved':
         thumb = await getVidThumbnail(more_details['records'][0]['video'])
 
-    charLimit = 250
+    charLimit = 125
     embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
     embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
     embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
@@ -484,6 +484,22 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
         embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}",
                          icon_url=ctx.user.avatar_url)
     return embed if not completionLinks else [embed, components]
+
+@alru_cache(maxsize=512)
+async def getChallButtons(lvlsLimit, pos) -> tuple[interactions.Button, interactions.Button]:
+    lastDemon = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Back",
+        custom_id="back_demon",
+        disabled=False if (lvlsLimit >= pos > 1) else True
+    )
+    nextDemon = interactions.Button(
+        style=interactions.ButtonStyle.PRIMARY,
+        label="Next",
+        custom_id="next_demon",
+        disabled=False if (pos <= lvlsLimit) else True
+    )
+    return lastDemon, nextDemon
 
 async def showCompletion(valsString: str):
     vals = valsString.split(",")

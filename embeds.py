@@ -1,4 +1,4 @@
-from interactions import Embed, User, EmbedFooter
+from interactions import Embed
 
 async def errorEmbed(e: Exception) -> Embed:
     details = "Sorry, an error occurred: \n" + str(e)[:90] + "..."
@@ -7,4 +7,3 @@ async def errorEmbed(e: Exception) -> Embed:
 
 async def successEmbed(desc: str) -> Embed:
     return Embed(title="Success", description=desc, color=0x66FF66)
-
