@@ -80,7 +80,7 @@ async def on_ready():
     await setSession(asyncSession)
     await updateLevels()
 
-    print(f"Bot online and logged in as {bot.me.name} in guilds: {bot.guilds}")
+    print(f"Bot online and logged in as {bot.me.name}")
 
     i = 0
     diff, diffFinal = None, 0
