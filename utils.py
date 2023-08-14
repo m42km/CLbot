@@ -38,7 +38,7 @@ async def requestPOST(rSession: aiohttp.ClientSession, url: str, data: dict):
     return resp
 
 @alru_cache(maxsize=2000)
-async def getLinkInfo(link: str) -> tuple[int, int, str]:
+async def getLinkInfo(link: str) -> tuple:
     new = link.replace("-", " ").replace(":", "(").replace(";", ")")
     args = new.split("=")[1].split("|")
     # limit|after|title
@@ -65,7 +65,7 @@ async def buildChallsLinkStr(limit, page, title: str) -> str:
     fixedLink = currLink.replace("(", ":").replace(")", ";")
     return fixedLink
 
-async def packActionRows(options: Union[list[interactions.SelectOption], tuple[interactions.SelectOption]]) -> list[interactions.ActionRow]:
+async def packActionRows(options: Union[list[interactions.SelectOption], tuple[interactions.SelectOption]]) -> list:
     """Packs large amounts of completion options in multiple action rows."""
     optionsAmt = 20
     fOptions = [options[x:x+optionsAmt] for x in range(0, len(options), optionsAmt)]
@@ -349,7 +349,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         actionRow2 = interactions.ActionRow(components=[selMenu])
         return tuple([embed, actionRow, actionRow2])
 
-async def getProfileCompletions(name: str, p_id: int, completions: list, page: int = 1) -> Union[None, tuple[ActionRow, ActionRow]]:
+async def getProfileCompletions(name: str, p_id: int, completions: list, page: int = 1):
     if not completions:
         return None
     cachedData = profileCompsCache.get(p_id)
@@ -486,7 +486,7 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
     return embed if not completionLinks else [embed, components]
 
 @alru_cache(maxsize=512)
-async def getChallButtons(lvlsLimit, pos) -> tuple[interactions.Button, interactions.Button]:
+async def getChallButtons(lvlsLimit, pos) -> tuple:
     lastDemon = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Back",

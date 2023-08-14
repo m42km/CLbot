@@ -46,7 +46,7 @@ dailyCol = 0xfafa45
 async def dUserExists(discord_id):
     return True if str(discord_id) in existingDailyUsers else False
 
-async def dUpdate(col, exp1, exp2) -> Union[interactions.Embed, Any]:
+async def dUpdate(col, exp1, exp2):
     try:
         r = await col.find_one_and_update(exp1, exp2)
     except Exception as e:
@@ -151,7 +151,7 @@ async def dLeaderboardButtons(page: int, limit: int):
 
     return backButton, nextButton
 
-async def dailyLeaderboard(ctx, page: int = 1, limit: int = 10, title: str = None) -> tuple[interactions.Embed, interactions.Button, interactions.Button]:
+async def dailyLeaderboard(ctx, page: int = 1, limit: int = 10, title: str = None):
     start = ((page - 1) * limit)
     desc, backButton, nextButton = "", None, None
     i = 1
@@ -177,12 +177,11 @@ async def isFriday():
     return datetime.now().weekday() == 4
 
 @alru_cache(maxsize=512) # cache limit should be enough
-async def levelDetails(levelID: int) -> tuple[str, str]:
+async def levelDetails(levelID: int):
     level = await cli.get_level(level_id=levelID)
     return level.name, level.creator.name
 
-async def getDailyDetails(msg: str, client: interactions.Client, token: str, getUser: bool = True) \
-        -> Union[tuple[int, str, Union[bool, int], interactions.User], tuple[int, str, Union[bool, int]]]:
+async def getDailyDetails(msg: str, client: interactions.Client, token: str, getUser: bool = True):
     doubleDaily: Union[bool, int] = False
     lines = msg.split("\n")
     dailynum = int(await getSubstr(lines[0], "y #", " S"))
