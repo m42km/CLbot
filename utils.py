@@ -1,6 +1,3 @@
-
-from typing import Union
-
 import aiohttp
 from interactions import ActionRow
 from async_lru import alru_cache
@@ -65,7 +62,7 @@ async def buildChallsLinkStr(limit, page, title: str) -> str:
     fixedLink = currLink.replace("(", ":").replace(")", ";")
     return fixedLink
 
-async def packActionRows(options: Union[list[interactions.SelectOption], tuple[interactions.SelectOption]]) -> list:
+async def packActionRows(options) -> list:
     """Packs large amounts of completion options in multiple action rows."""
     optionsAmt = 20
     fOptions = [options[x:x+optionsAmt] for x in range(0, len(options), optionsAmt)]
@@ -144,7 +141,7 @@ async def checkInteractionPerms(ctx: interactions.ComponentContext) -> bool:
     else:
         return True
 
-async def getChallenges(ctx: Union[interactions.ComponentContext, interactions.CommandContext], limit, after, title, challenges_list: tuple[dict] = None):
+async def getChallenges(ctx, limit, after, title, challenges_list: tuple = None):
     if not challenges_list:
         r = await requestGET(session, f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}")
     else:

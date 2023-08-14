@@ -5,7 +5,6 @@ from embeds import errorEmbed, successEmbed
 import gd
 import interactions
 from async_lru import alru_cache
-from typing import Union, Any
 import motor.motor_asyncio as motorAsyncIO
 import os
 
@@ -37,7 +36,7 @@ existingDailyUsers: list = []
 tz = timezone(timedelta(hours=-5)) # CDT (UTC-5)
 tz2 = timezone(timedelta(hours=0))
 
-dailyCalcDict: dict[str, dict[str, Union[datetime, int]]] = {"daily": {"date": datetime(2023, 6, 23, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
+dailyCalcDict = {"daily": {"date": datetime(2023, 6, 23, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
                                                              "weekly": {"date": datetime(2023, 7, 2, tzinfo=tz2), "offset": 158, "divSeconds": 604800},
                                                              "monthly": {"sum": 24283, "offset": 37}}
 
@@ -182,7 +181,7 @@ async def levelDetails(levelID: int):
     return level.name, level.creator.name
 
 async def getDailyDetails(msg: str, client: interactions.Client, token: str, getUser: bool = True):
-    doubleDaily: Union[bool, int] = False
+    doubleDaily = False
     lines = msg.split("\n")
     dailynum = int(await getSubstr(lines[0], "y #", " S"))
     dType = await getSubstr(lines[0], "__", " #")

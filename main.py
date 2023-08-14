@@ -7,7 +7,6 @@ from daily import *
 import asyncio
 import interactions
 import interactions.utils
-from typing import Union
 
 createdAt = (datetime.now() - datetime(1970, 1, 1)).total_seconds()
 currDaily = 0
@@ -20,15 +19,15 @@ dailySubsChannelID = 1122201006076350565
 dailyQueueChannelID = 1122200983351607386
 dailyAnnounceChannelID = 1125582176205946941
 
-dailySubsChannel: Union[interactions.Channel, None] = None
-dailyQueueChannel: Union[interactions.Channel, None] = None
-dailyAnnounceChannel: Union[interactions.Channel, None] = None
+dailySubsChannel = None
+dailyQueueChannel = None
+dailyAnnounceChannel = None
 doubleFriday = None
 
-dailyCurrSubs: dict[str, dict[int, interactions.Message]] = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
+dailyCurrSubs: dict = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
                                                              "monthly": {}}
-dailyCurrAccepted: dict[str, list] = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
-dailyCmdQueue: dict[int, dict[str, Union[str, bool, int]]] = {
+dailyCurrAccepted: dict = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
+dailyCmdQueue: dict = {
     34822: {"dtype": "daily", "doubledaily": False}}  # Pending video submissions
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
@@ -734,7 +733,7 @@ async def add_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: 
     interactions.Option(name="dailynum", type=interactions.OptionType.INTEGER, required=True, description="Daily number"),
     interactions.Option(name="dailyid", type=interactions.OptionType.INTEGER, required=False, description="Daily ID"),
     interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=False, description="cool stars")])
-async def edit_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: int, dailyid: Union[int, None] = None, coolstars: Union[int, None] = None):
+async def edit_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: int, dailyid = None, coolstars = None):
     editDict = {}
     if dailyid:
         name, creator = await levelDetails(dailyid)
