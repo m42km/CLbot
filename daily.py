@@ -2,11 +2,11 @@ from datetime import datetime, timezone, timedelta
 from math import floor, ceil
 from utils import getSubstr
 from embeds import errorEmbed, successEmbed
-import gd
 import interactions
 from async_lru import alru_cache
 import motor.motor_asyncio as motorAsyncIO
 import os
+from gd import Client
 
 dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept", custom_id="daily_acceptsub")
 dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject", custom_id="daily_rejectsub")
@@ -15,7 +15,7 @@ dailyNotesButton = interactions.Button(style=interactions.ButtonStyle.PRIMARY, l
 blobstarID = 1125583545268711435
 notifyRoleID = 1125586421252632606
 
-cli = gd.Client()
+cli = Client()
 
 mongoURI = os.getenv("MONGO_URI")
 mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI)
