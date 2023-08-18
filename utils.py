@@ -1,4 +1,5 @@
 import aiohttp
+from math import exp, log
 from interactions import ActionRow
 from async_lru import alru_cache
 from autocorrect import *
@@ -120,8 +121,11 @@ async def leaderboardDetails(title) -> tuple:
     return country, after, limit
 
 @alru_cache(maxsize=500)
-async def calcPoints(n) -> float: # calculates list points, n is position
-    return round(259.688*(0.962695**n), 2) if n < 101 else 0
+def calcPoints(n) -> float: calculates list points, n is position
+    return round(250 * exp(log(250 / 15) / (1 - 100) * (n - 1)), 2) if n < 101 else 0
+
+# async def calcPoints(n) -> float: # calculates list points, n is position
+#    return round(259.688*(0.962695**n), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
 @alru_cache(maxsize=300)
