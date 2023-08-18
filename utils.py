@@ -120,7 +120,7 @@ async def leaderboardDetails(title) -> tuple:
     return country, after, limit
 
 @alru_cache(maxsize=500)
-def calcPoints(n) -> float: # calculates list points, n is position
+async def calcPoints(n) -> float: # calculates list points, n is position
     return round(250 * exp(log(250 / 15) / (1 - 100) * (n - 1)), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
