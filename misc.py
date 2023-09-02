@@ -1,12 +1,13 @@
 from datetime import datetime, timezone, timedelta
 from math import floor, ceil
-from utils import getSubstr
 from embeds import errorEmbed, successEmbed
+from req import requestGET
 import interactions
 from async_lru import alru_cache
 import motor.motor_asyncio as motorAsyncIO
 import os
 from gd import Client
+
 
 dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept", custom_id="daily_acceptsub")
 dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject", custom_id="daily_rejectsub")
@@ -27,7 +28,13 @@ dailyChallenges: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['dailyLevels']
 dailyChallsLocal: dict = {"daily": {}, "weekly": {}, "monthly": {},
                           "daily1": {}, "daily2": {}}
 
+# https://challengelist.gd/api/v1/players/?after=4&before=6 to get acc id 5
+
 dailyUsers: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['dailyLeaderboard']
+listUsers: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['clAccounts']
+discList: dict = {}
+listDisc: dict = {}
+# discord_id: text, account_id: int32
 dailyUsersLocal: dict = {}
 dailyUsersLeaderboard: list = []
 leaderboardIndex: dict = {}
@@ -41,6 +48,10 @@ dailyCalcDict = {"daily": {"date": datetime(2023, 6, 23, tzinfo=tz2), "offset": 
                                                              "monthly": {"sum": 24283, "offset": 37}}
 
 dailyCol = 0xfafa45
+
+@alru_cache(maxsize=1000)
+async def getSubstr(s: str, after: str, before: str) -> str:
+    return s[s.index(after) + len(after): s.index(before)]
 
 async def dUserExists(discord_id):
     return True if str(discord_id) in existingDailyUsers else False
@@ -58,6 +69,23 @@ async def dFind(col, exp):
     except Exception as e:
         r = await errorEmbed(e)
     return r
+
+async def lLinkAccount(discord_id: str, account_name: str) -> interactions.Embed:
+    try:
+        await listUsers.insert_one({"discord_id": discord_id, "account_name": account_name})
+        discList.update({discord_id: account_name})
+        listDisc.update({account_name: discord_id})
+        return await successEmbed(f"<@{discord_id}> has been linked to the Challenge List account **{account_name}**")
+    except Exception as e:
+        return await errorEmbed(e)
+
+async def lUnlinkAccount(discord_id: str) -> interactions.Embed:
+    try:
+        await listUsers.delete_one({"discord_id": discord_id})
+        await listUsersCollect()
+        return await successEmbed(f"<@{discord_id}> has been unlinked from their previous Challenge List account.")
+    except Exception as e:
+        return await errorEmbed(e)
 
 async def dFindUser(discord_id: int):
     if discord_id in dailyUsersLocal.keys():
@@ -89,6 +117,12 @@ async def getPoints(user_id: int):
         desc = f"<@{user_id}> has **0** points"
     embed = interactions.Embed(title="Points", description=desc, color=0x5555FF)
     return embed
+
+async def getPointsInt(user_id: int):
+    if str(user_id) in existingDailyUsers:
+        return dailyUsersLocal[user_id]
+    else:
+        return 0
 
 async def setPoints(user_id: int, pts: int):
     exists = await dUserExists(user_id)
@@ -246,6 +280,19 @@ async def dailyLocalCollect():
     existingDailyUsers = existingDailyUsers2
     leaderboardIndex = leaderboardIndex2
 
+async def listUsersCollect():
+    global discList, listDisc
+    lUsersNew = await listUsers.aggregate([{'$sort': {'num': -1}}]).to_list(length=None)
+    discList2, listDisc2 = {}, {}
+
+    for user in lUsersNew:
+        dID, aID = user['discord_id'], user['account_name']
+        discList2.update({dID: aID})
+        listDisc2.update({aID: dID})
+
+    discList = discList2
+    listDisc = listDisc2
+
 async def dChallsCollect():
     dChallsNew = await dailyChallenges.aggregate([{'$sort': {'num': -1}}]).to_list(length=None)
     for challenge in dChallsNew:
@@ -288,3 +335,23 @@ async def postDaily(channel: interactions.Channel, dtype: str, num: int):
         if dailyname in msg.content:
             await channel.unpin_message(msg)
             break
+
+async def discToListUser(discord_id: str):
+    if discord_id not in discList.keys():
+        return 0
+    else:
+        return discList[discord_id]
+
+async def listToDisc(account_name: str):
+    if account_name not in listDisc.keys():
+        return 0
+    else:
+        return f"{listDisc[account_name]}"
+
+async def discToListPoints(discord_id: str):
+    listUsername = await discToListUser(discord_id)
+    if listUsername == 0:
+        return 0
+    else:
+        pts = (await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={listUsername}"))[0]['scores']
+        return pts

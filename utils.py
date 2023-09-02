@@ -1,10 +1,9 @@
-import aiohttp
-from interactions import ActionRow
 from async_lru import alru_cache
 from autocorrect import *
-
+from req import *
+from misc import discToListUser, listToDisc, getPointsInt
+from math import exp, log
 verifySSL = True
-session = aiohttp.ClientSession()
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 headers = {"User-Agent": agent}
@@ -13,26 +12,9 @@ profileCompsCache = {} # profile completion cache
 # sample: {384: {'completions': completionsJson, 'baseEmbed': embed, 'detailComps': components}}
 embedCol2 = 0xfafa00
 
-async def setSSL(bool_val: bool):
-    global verifySSL
-    verifySSL = bool_val
-
-async def setSession(newSession: aiohttp.ClientSession):
-    global session
-    session = newSession
-
 async def clearCache():
     global profileCache
     profileCache = {}
-
-async def requestGET(rSession: aiohttp.ClientSession, url: str) -> dict:
-    resp = await rSession.get(url) # asynchronous goodness awaits..
-    json = await resp.json()
-    return json
-
-async def requestPOST(rSession: aiohttp.ClientSession, url: str, data: dict):
-    resp = await rSession.post(url, data=data)
-    return resp
 
 @alru_cache(maxsize=2000)
 async def getLinkInfo(link: str) -> tuple:
@@ -121,7 +103,7 @@ async def leaderboardDetails(title) -> tuple:
 
 @alru_cache(maxsize=500)
 async def calcPoints(n) -> float: # calculates list points, n is position
-    return round(250 * exp(log(250 / 15) / (1 - 100) * (n - 1)), 2) if n < 101 else 0
+    return round(250 * exp(log(250 / 15) / (-99) * (n - 1)), 2) if n < 101 else 0
 
 # https://www.youtube.com/watch?v=wZxRdKi4uuU
 @alru_cache(maxsize=300)
@@ -143,7 +125,7 @@ async def checkInteractionPerms(ctx: interactions.ComponentContext) -> bool:
 
 async def getChallenges(ctx, limit, after, title, challenges_list: tuple = None):
     if not challenges_list:
-        r = await requestGET(session, f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}")
+        r = await requestGET(f"https://challengelist.gd/api/v1/demons/?limit={limit}&after={after}")
     else:
         r = challenges_list[after: after + limit]
     if not r:
@@ -189,7 +171,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
         if not cLevel:
             levels = []
         else:
-            levels = await requestGET(session, f"https://challengelist.gd/api/v1/demons/?name_contains={cLevel}")
+            levels = await requestGET(f"https://challengelist.gd/api/v1/demons/?name_contains={cLevel}")
         if len(levels) > 1:
             i = 0
             for level in levels:
@@ -208,7 +190,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
     elif lvl_pos:
         g_level = {"position": lvl_pos}
 
-    f_level = (await requestGET(session, f"https://challengelist.gd/api/v1/demons/{g_level['position']}"))['data']
+    f_level = (await requestGET(f"https://challengelist.gd/api/v1/demons/{g_level['position']}"))['data']
 
     name, creator, position = f_level['name'], f_level['publisher']['name'], f"#{f_level['position']}"
     verifier, verification_video, level_id = f_level['verifier']['name'], f_level['video'], f_level['level_id']
@@ -277,7 +259,8 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
 @alru_cache(maxsize=300)
 async def chLeaderboardPageDisable(limit, after, country=None):
     """Checks if next page on player leaderboards should be disabled since player count varies heavily"""
-    r = await requestGET(session, f"https://challengelist.gd/api/v1/players/ranking/?limit={limit}{('&nation=' + country) if country else ''}&after={after + limit}")
+    r = await requestGET(
+        f"https://challengelist.gd/api/v1/players/ranking/?limit={limit}{('&nation=' + country) if country else ''}&after={after + limit}")
     disableNext = True if len(r) == 0 else False
     disableNextAfter = True if len(r) < limit else False
     return disableNext, disableNextAfter
@@ -290,7 +273,8 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         await ctx.send(embeds=cCountry[0], components=cCountry[1]) # send autocorrect embed form
         return None
 
-    r = await requestGET(session, f"https://challengelist.gd/api/v1/players/ranking/?limit={limit if limit and limit < 26 else 10}{('&nation=' + cCountry) if cCountry else ''}&after={after if after else 0}")
+    r = await requestGET(
+        f"https://challengelist.gd/api/v1/players/ranking/?limit={limit if limit and limit < 26 else 10}{('&nation=' + cCountry) if cCountry else ''}&after={after if after else 0}")
     if not after:
         after = 0
     if not limit:
@@ -381,29 +365,59 @@ async def getProfileCompletions(name: str, p_id: int, completions: list, page: i
     return fOpts[0], buttonSets[0]
     # returns one actionrow and a tuple of two buttons
 
-async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0xffae00, completionsPage: int = 1):
+async def getProfile(ctx, name: str = None, discUser: interactions.User = None, completionLinks: bool = False, embedCol: int = 0xffae00, completionsPage: int = 1):
     """Returns a profile embed, a profile embed and components or returns ``None`` if player can't be found."""
-    p = await requestGET(session, f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}")
-    if not p:
-        # adding an autocorrect to profiles would probably require indexing every player (over 300 and counting).
-        # that might not be ideal
-        return None
-    # get the correct user
-    if len(p) > 1:
-        i = 0
-        for player in p:
-            if len(player['name']) == name:
-                p = p[i]
-                break
-            else:
-                i += 1
-        if len(p) > 1:
-            p = p[0]
-    else:
-        p = p[0]
 
-    p_id = p['id']
-    name = p['name']
+    playerDiscordID = None
+    coolStars = None
+    if name:
+        p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}")
+        if not p:
+            # adding an autocorrect to profiles would probably require indexing every player (over 300 and counting).
+            # that might not be ideal
+            await ctx.send("**Error**: Could not find a account on the Challenge List with that name.")
+            return None
+        # get the correct user
+        if len(p) > 1:
+            i = 0
+            for player in p:
+                if len(player['name']) == name:
+                    p = p[i]
+                    break
+                else:
+                    i += 1
+            if len(p) > 1:
+                p = p[0]
+        else:
+            p = p[0]
+        p_id = p['id']
+        name = p['name']
+        playerDiscordID = await listToDisc(name)
+        if playerDiscordID == 0:
+            playerDiscordID = None
+    elif not discUser:
+        res = await discToListUser(str(ctx.user.id))
+        playerDiscordID = str(ctx.user.id)
+        print(res)
+        if res != 0:
+            p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={res}")
+            p = p[0]
+            p_id, name = p['id'], p['name']
+        else:
+            await ctx.send("Your Challenge List account is not linked to your Discord account or an error has occurred. Try again later or ask a staff member to resolve it for you.")
+            return
+    else:
+        res = await discToListUser(str(discUser.id))
+        playerDiscordID = str(discUser.id)
+        print(res)
+        if res != 0:
+            p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={res}")
+            p = p[0]
+            p_id, name = p['id'], p['name']
+        else:
+            await ctx.send("Error: That Discord user does not have a Challenge List account linked to them. Please try again later.")
+            return
+
     # cached embeds & completions
     cachedData = profileCache.get(p_id)
     if cachedData:
@@ -416,8 +430,7 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
 
     rank = p['rank']
     badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
-    more_details = (await requestGET(session, f"https://challengelist.gd/api/v1/players/{p_id}"))[
-        'data']
+    more_details = (await requestGET(f"https://challengelist.gd/api/v1/players/{p_id}"))['data']
 
     for sLevels in ['created', 'published', 'verified', 'records']: # very swag python code
         more_details.update({sLevels: sorted(more_details[sLevels], key=lambda pos: pos['position'] if sLevels != 'records' else pos['demon']['position'])})
@@ -445,6 +458,7 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
         options.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']} ",
                                                  value=f'comp|{record["demon"]["name"]}|{p["name"]}|{record["video"][32:]}|{record["demon"]["position"]}',
                                                  description=f"{await calcPoints(record['demon']['position'])} points"))
+
     # i wish there was a better way to do this......
     completed_demons = ', '.join(completed_demons) if completed_demons else "None"
     legacy_demons = ', '.join(legacy_demons) if legacy_demons else "None"
@@ -459,11 +473,16 @@ async def getProfile(ctx, name, completionLinks: bool = False, embedCol: int = 0
         thumb = await getVidThumbnail(more_details['records'][0]['video'])
 
     charLimit = 125
+
     embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
     embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
     embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
+    if playerDiscordID:
+        embed.add_field(name="Discord", value=f"<@{playerDiscordID}>", inline=True)
+        embed.add_field(name="Cool-Stars", value=str(await getPointsInt(int(playerDiscordID))), inline=True)
     embed.add_field(name="Challenges created", value=created_demons, inline=True)
     embed.add_field(name="Verified challenges", value=verified_demons, inline=True if len(verified_demons) < 200 else False)
+
     embed.add_field(name="Completed challenges",
                     value=(completed_demons[:charLimit] + "...") if len(completed_demons) > charLimit else completed_demons)
     embed.add_field(name="Completed challenges (legacy)",
@@ -499,6 +518,7 @@ async def getChallButtons(lvlsLimit, pos) -> tuple:
     return lastDemon, nextDemon
 
 async def showCompletion(valsString: str):
+    print(valsString)
     vals = valsString.split(",")
     name, player, link, pos = vals[1], vals[2], "https://youtube.com/watch?v=" + vals[3], vals[4]
     suffix = "'s" if not name.lower().endswith('s') and not name.lower().endswith('z') else "'"

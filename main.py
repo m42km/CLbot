@@ -811,4 +811,54 @@ async def dailyLeaderboardNext(ctx: interactions.ComponentContext):
     embed, backButton, nextButton = await dailyLeaderboard(ctx, page, limit)
     await ctx.edit(embeds=embed, components=[backButton, nextButton])
 
+@bot.command(name="updateroles", description="Update your cool stars, list points, etc. roles with this command")
+async def updateRoles(ctx: interactions.CommandContext):
+    userId = int(ctx.user.id)
+    dCurrPoints = await getPointsInt(userId)
+    lCurrPoints = await discToListPoints(str(userId))
+
+    # contact ultimatepro64lol@gmail.com for more information
+    updatedRoles = []
+    for lP in [100, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 8402.39]:
+        if lCurrPoints >= lP:
+            await ctx.member.add_role(listPointRoles[lP], bot.guilds[0])
+            updatedRoles.append(listPointRoles[lP])
+        else:
+            break
+    for dP in [25, 50, 100, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000]:
+        if dCurrPoints >= dP:
+            await ctx.member.add_role(dailyPointRoles[dP], bot.guilds[0])
+            updatedRoles.append(dailyPointRoles[dP])
+        else:
+            break
+
+    rolesList = ""
+    for rID in updatedRoles:
+        rolesList += f"<@&{rID}> "
+    if not rolesList:
+        embed = await successEmbed("No new roles added.")
+    else:
+        embed = await successEmbed("Added role(s): " + rolesList)
+    await ctx.send(embeds=embed)
+
+
+@bot.command(name="linkdiscord", description="Link a user's discord account to their Challenge List account",
+             options=[interactions.Option(name="user", type=interactions.OptionType.USER, required=True,
+                                          description="Daily user"),
+                      interactions.Option(name="name", type=interactions.OptionType.STRING, required=True,
+                                          description="Name of account to link")
+                      ])
+async def linkdiscord(ctx: interactions.CommandContext, user: interactions.User, name: str):
+    embed = await lLinkAccount(str(user.id), name)
+    await ctx.send(embeds=embed)
+
+@bot.command(name="unlinkdiscord", description="Unlink a user's discord account from their previous Challenge List account",
+             options=[interactions.Option(name="user", type=interactions.OptionType.USER, required=True,
+                                          description="Daily user")
+                      ])
+async def unlinkdiscord(ctx: interactions.CommandContext, user: interactions.User):
+    embed = await lUnlinkAccount(str(user.id))
+    await ctx.send(embeds=embed)
+
+
 bot.start()
