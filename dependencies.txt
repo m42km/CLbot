@@ -5,3 +5,5 @@ async_lru
 gd.py
 motor
 python-dotenv
+certifi
+fastapi
