@@ -5,6 +5,7 @@ from req import requestGET
 import interactions
 from async_lru import alru_cache
 import motor.motor_asyncio as motorAsyncIO
+from pymongo.server_api import ServerApi
 import os
 from gd import Client
 import certifi
@@ -21,7 +22,7 @@ cli = Client()
 
 ca = certifi.where()
 mongoURI = os.getenv("MONGO_URI")
-mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI, tlsCAFile=ca) # fixes ssl handshake failure
+mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI, server_api=ServerApi('1')) # fixes ssl handshake failure
 collection = mongoClient
 
 dailybotDB: motorAsyncIO.AsyncIOMotorDatabase = mongoClient['dailybotDB']

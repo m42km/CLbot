@@ -860,5 +860,4 @@ async def unlinkdiscord(ctx: interactions.CommandContext, user: interactions.Use
     embed = await lUnlinkAccount(str(user.id))
     await ctx.send(embeds=embed)
 
-
 bot.start()
