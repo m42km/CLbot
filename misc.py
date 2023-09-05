@@ -5,11 +5,8 @@ from req import requestGET
 import interactions
 from async_lru import alru_cache
 import motor.motor_asyncio as motorAsyncIO
-from pymongo.server_api import ServerApi
 import os
 from gd import Client
-import certifi
-
 
 dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept", custom_id="daily_acceptsub")
 dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject", custom_id="daily_rejectsub")
@@ -20,9 +17,8 @@ notifyRoleID = 1125586421252632606
 
 cli = Client()
 
-ca = certifi.where()
 mongoURI = os.getenv("MONGO_URI")
-mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI, server_api=ServerApi('1')) # fixes ssl handshake failure
+mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI)
 collection = mongoClient
 
 dailybotDB: motorAsyncIO.AsyncIOMotorDatabase = mongoClient['dailybotDB']
