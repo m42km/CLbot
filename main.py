@@ -322,7 +322,6 @@ async def submitrecord(ctx: interactions.CommandContext):
         style=interactions.TextStyleType.SHORT, label="Challenge (leave blank for \" \")",
         custom_id="submitrecord_challenge",
         min_length=1, required=False)
-
     field_player = interactions.TextInput(
         style=interactions.TextStyleType.SHORT, label="Player name", custom_id="submitrecord_player",
         min_length=1, required=True)
@@ -414,7 +413,6 @@ async def submitrecord_autocorrect(ctx: interactions.ComponentContext):
 async def submitecord_cancel(ctx: interactions.ComponentContext):
     await ctx.send("**List completion submission cancelled.**")
 
-
 @bot.component("submitrecord_confirm")
 async def submitrecord_confirmed(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx):
@@ -430,9 +428,7 @@ async def submitrecord_confirmed(ctx: interactions.ComponentContext):
         if challenge != "\" \"":
             demon_id = 249  # the exception
         else:
-            demon_id = \
-            (await requestGET())[
-                0]["id"]
+            demon_id = (await requestGET(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0]["id"]
 
         await requestPOST(session, "https://challengelist.gd/api/v1/records/",
                           data={"demon": demon_id, "player": player, "video": video,
