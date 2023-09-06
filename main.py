@@ -774,8 +774,9 @@ async def daily_nums(ctx: interactions.CommandContext):
     embedDesc = ""
     for dtype in ["daily", "weekly", "monthly"]:
         inf = await getDailyInfo(dtype, currDailies[dtype])
-        embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} "
+        embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} \n"
     embed = interactions.Embed(name="Current Dailies", description=embedDesc)
+    await ctx.send(embed)
 
 @bot.command(name="daily_editchall", description="Edit a daily challenge", options=[
     interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily ID",
