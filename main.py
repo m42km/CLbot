@@ -735,7 +735,6 @@ async def daily_points(ctx: interactions.CommandContext, user: interactions.User
     ptsEmbed = await getPoints(int(user.id))
     await ctx.send(embeds=ptsEmbed)
 
-
 @bot.command(name="daily_addchall", description="Add a daily challenge", options=[
     interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily type",
                         choices=[
@@ -769,12 +768,12 @@ async def add_nextdaily(ctx: interactions.CommandContext, dailytype: str, dailyi
     op = await addDaily(str(ctx.user.id), str(dailyid), dailytype, currDailies[dailytype] + 1, coolstars)
     await ctx.send(embeds=op)
 
-@bot.command(name="currdailies", description="Show current dailies")
+@bot.command(name="daily_currdailies", description="Show current dailies")
 async def daily_nums(ctx: interactions.CommandContext):
     embedDesc = ""
     for dtype in ["daily", "weekly", "monthly"]:
         inf = await getDailyInfo(dtype, currDailies[dtype])
-        embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} \n"
+        embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} {inf}\n"
     embed = interactions.Embed(name="Current Dailies", description=embedDesc)
     await ctx.send(embeds=embed)
 

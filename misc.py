@@ -267,10 +267,15 @@ async def getDailyPoints(dtype: str, dailynum: int):
         return dailyChallsLocal[dtype][dailynum]['stars']
     return None
 
-async def getDailyInfo(dtype: str, dailynum: int):
+async def getDailyDoc(dtype: str, dailynum: int):
     if dailynum in dailyChallsLocal[dtype].keys():
-        d = dailyChallsLocal[dtype][dailynum]
-        return f"*{d['name']}* by {d['creator']} ( {d['stars']} <:blobstar:{blobstarID}>"
+        return dailyChallsLocal[dtype][dailynum]
+    return None
+
+async def getDailyInfo(dtype: str, dailynum: int):
+    d = await getDailyDoc(dtype, dailynum)
+    if d:
+        return f"*{d['name']}* by {d['creator']} ( {d['stars']} <:blobstar:{blobstarID}> )"
     return "None!"
 
 async def dailyLocalCollect():
@@ -323,7 +328,7 @@ async def fixEmbedVideo(s: str):
     return fixed
 
 async def postDaily(channel: interactions.Channel, dtype: str, num: int):
-    d = await getDailyPoints(dtype, num)
+    d = await getDailyDoc(dtype, num)
     dailyID, coolStars = int(d['level_id']), d['stars']
     levelName, levelCreator = await levelDetails(int(d['level_id']))
     dt = datetime.now()
