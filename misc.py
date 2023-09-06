@@ -6,14 +6,20 @@ import interactions
 from async_lru import alru_cache
 import motor.motor_asyncio as motorAsyncIO
 import os
+from json import load
+import json
 from gd import Client
+
+f = open("configdiscord.json")
+miscConfig = load(f)
+f.close()
 
 dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept", custom_id="daily_acceptsub")
 dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject", custom_id="daily_rejectsub")
 dailyNotesButton = interactions.Button(style=interactions.ButtonStyle.PRIMARY, label="Add/Set Notes", custom_id="daily_subnotes")
 
-blobstarID = 1125583545268711435
-notifyRoleID = 1125586421252632606
+blobstarID = miscConfig['emojis']['blobstar']
+notifyRoleID = miscConfig['roles']['notifyEvents']
 
 cli = Client()
 
@@ -229,7 +235,7 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
     else:
         return dailynum, dType, doubleDaily
 
-async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, stars: int):
+async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, stars: int) -> interactions.Embed:
     name, creator = await levelDetails(int(level_id))
     try:
         r = await dailyChallenges.insert_one({"name": name,
@@ -260,6 +266,12 @@ async def getDailyPoints(dtype: str, dailynum: int):
     if dailynum in dailyChallsLocal[dtype].keys():
         return dailyChallsLocal[dtype][dailynum]['stars']
     return None
+
+async def getDailyInfo(dtype: str, dailynum: int):
+    if dailynum in dailyChallsLocal[dtype].keys():
+        d = dailyChallsLocal[dtype][dailynum]
+        return f"*{d['name']}* by {d['creator']} ( {d['stars']} <:blobstar:{blobstarID}>"
+    return "None!"
 
 async def dailyLocalCollect():
     global dailyUsersLeaderboard, existingDailyUsers, dailyChallsLocal, leaderboardIndex

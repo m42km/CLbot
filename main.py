@@ -1,6 +1,11 @@
 from dotenv import load_dotenv
+from json import load
 
 load_dotenv()
+
+f = open("configdiscord.json")
+config = load(f)
+f.close()
 
 from utils import *
 from misc import *
@@ -15,9 +20,9 @@ dailyCol = 0xfafa45
 
 token = os.getenv("TOKEN")
 
-dailySubsChannelID = 1122201006076350565
-dailyQueueChannelID = 1122200983351607386
-dailyAnnounceChannelID = 1125582176205946941
+dailySubsChannelID = config['channels']['dailyCompletions']
+dailyQueueChannelID = config['channels']['dailyModsQueue']
+dailyAnnounceChannelID = config['channels']['dailyAnnouncements']
 
 dailySubsChannel = None
 dailyQueueChannel = None
@@ -74,8 +79,7 @@ async def on_ready():
 
     dailySubsChannel = await interactions.get(client=bot, obj=interactions.Channel, object_id=dailySubsChannelID)
     dailyQueueChannel = await interactions.get(client=bot, obj=interactions.Channel, object_id=dailyQueueChannelID)
-    dailyAnnounceChannel = await interactions.get(bot, obj=interactions.Channel, object_id=dailyAnnounceChannelID)
-    asyncSession = aiohttp.ClientSession(headers=headers)
+    dailyAnnounceChannel = await interactions.get(client=bot, obj=interactions.Channel, object_id=dailyAnnounceChannelID)
 
     await dailyLocalCollect()
     await dChallsCollect()
@@ -175,7 +179,7 @@ async def nextpage_leaderboard(ctx: interactions.ComponentContext):
 @bot.component("leaderboard_playermenu")
 async def leaderboard_playersel(ctx: interactions.ComponentContext, val):
     if not await checkInteractionPerms(ctx): return
-    out = await getProfile(ctx, val[0].split("_")[2], False, embedCol=embedCol2)
+    out = await getProfile(ctx, name=val[0].split("_")[2], completionLinks=False, embedCol=embedCol2)
     if out:
         await ctx.edit(content="", embeds=[ctx.message.embeds[0], out], components=ctx.message.components)
 
@@ -355,11 +359,6 @@ async def submitrecord_confirmation(ctx: interactions.ComponentContext, challeng
         return
     if type(cLevel) == tuple:
         await ctx.send(embed=cLevel[0], components=cLevel[1:])
-        return
-    if not await requestGET():
-        await ctx.send(
-            content=f"<@{ctx.user.id}>, the player you submitted a completion for cannot be found. Please check the name and try again.",
-            ephemeral=True)
         return
 
     embed = interactions.Embed(title="List Completion Confirmation",
@@ -755,6 +754,28 @@ async def add_daily(ctx: interactions.CommandContext, dailytype: str, dailynum: 
     op = await addDaily(str(ctx.user.id), str(dailyid), dailytype, dailynum, coolstars)
     await ctx.send(embeds=op)
 
+@bot.command(name="daily_setnextchall", description="Set the next daily challenge", options=[
+    interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily type",
+                        choices=[
+                            interactions.Choice(name="Daily", value="daily"),
+                            interactions.Choice(name="Weekly", value="weekly"),
+                            interactions.Choice(name="Monthly", value="monthly"),
+                            interactions.Choice(name="DDF #1", value="daily1"),
+                            interactions.Choice(name="DDF #2", value="daily2"),
+                        ]),
+    interactions.Option(name="dailyid", type=interactions.OptionType.INTEGER, required=True, description="Daily ID"),
+    interactions.Option(name="coolstars", type=interactions.OptionType.INTEGER, required=True, description="cool stars")])
+async def add_nextdaily(ctx: interactions.CommandContext, dailytype: str, dailyid: int, coolstars: int):
+    op = await addDaily(str(ctx.user.id), str(dailyid), dailytype, currDailies[dailytype] + 1, coolstars)
+    await ctx.send(embeds=op)
+
+@bot.command(name="currdailies", description="Show current dailies")
+async def daily_nums(ctx: interactions.CommandContext):
+    embedDesc = ""
+    for dtype in ["daily", "weekly", "monthly"]:
+        inf = await getDailyInfo(dtype, currDailies[dtype])
+        embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} "
+    embed = interactions.Embed(name="Current Dailies", description=embedDesc)
 
 @bot.command(name="daily_editchall", description="Edit a daily challenge", options=[
     interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily ID",

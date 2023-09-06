@@ -1,0 +1,13 @@
+{
+  "channels": {
+    "dailyAnnouncements": 1125582176205946941,
+    "dailyModsQueue": 1122200983351607386,
+    "dailyCompletions": 1122201006076350565
+  },
+  "emojis": {
+    "blobstar": 1125583545268711435
+  },
+  "roles": {
+    "notifyEvents": 1125586421252632606
+  }
+}
