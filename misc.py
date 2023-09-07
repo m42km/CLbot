@@ -230,7 +230,7 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
     if getUser:
         userID = int(await getSubstr(lines[1], "@", ">"))
         user = await interactions.get(client=client, obj=interactions.User, object_id=userID)
-        user._client = interactions.HTTPClient(token)
+        user._client = interactions.HTTPClient(token, interactions.Cache())
         return dailynum, dType, doubleDaily, user
     else:
         return dailynum, dType, doubleDaily
