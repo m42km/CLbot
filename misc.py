@@ -54,6 +54,24 @@ dailyCalcDict = {"daily": {"date": datetime(2023, 6, 23, tzinfo=tz2), "offset": 
 
 dailyCol = 0xfafa45
 
+async def dailyLocalCollect():
+    global dailyUsersLeaderboard, existingDailyUsers, dailyChallsLocal, leaderboardIndex
+    dailyUsersLeaderboard2, existingDailyUsers2, leaderboardIndex2 = [], [], {}
+    i = 1
+    dUsersNew = await dailyUsers.aggregate([{'$sort': {'points': -1}}]).to_list(length=None)
+
+    for user in dUsersNew:
+        existingDailyUsers2.append(user["discord_id"])
+        # these are all for making lookup faster and easier
+        dailyUsersLeaderboard2.append({"discord_id": int(user["discord_id"]), "points": user['points']})
+        leaderboardIndex2.update({user['points']: i})
+        dailyUsersLocal.update({int(user["discord_id"]): user['points']})
+        i += 1
+
+    dailyUsersLeaderboard = dailyUsersLeaderboard2
+    existingDailyUsers = existingDailyUsers2
+    leaderboardIndex = leaderboardIndex2
+
 @alru_cache(maxsize=1000)
 async def getSubstr(s: str, after: str, before: str) -> str:
     return s[s.index(after) + len(after): s.index(before)]
@@ -278,23 +296,7 @@ async def getDailyInfo(dtype: str, dailynum: int):
         return f"*{d['name']}* by {d['creator']} ( {d['stars']} <:blobstar:{blobstarID}> )"
     return "None!"
 
-async def dailyLocalCollect():
-    global dailyUsersLeaderboard, existingDailyUsers, dailyChallsLocal, leaderboardIndex
-    dailyUsersLeaderboard2, existingDailyUsers2, leaderboardIndex2 = [], [], {}
-    i = 1
-    dUsersNew = await dailyUsers.aggregate([{'$sort': {'points': -1}}]).to_list(length=None)
 
-    for user in dUsersNew:
-        existingDailyUsers2.append(user["discord_id"])
-        # these are all for making lookup faster and easier
-        dailyUsersLeaderboard2.append({"discord_id": int(user["discord_id"]), "points": user['points']})
-        leaderboardIndex2.update({user['points']: i})
-        dailyUsersLocal.update({int(user["discord_id"]): user['points']})
-        i += 1
-
-    dailyUsersLeaderboard = dailyUsersLeaderboard2
-    existingDailyUsers = existingDailyUsers2
-    leaderboardIndex = leaderboardIndex2
 
 async def listUsersCollect():
     global discList, listDisc

@@ -729,9 +729,12 @@ async def daily_setpoints(ctx: interactions.CommandContext, user: interactions.U
 
 
 @bot.command(name="daily_points", description="View a player's daily points", options=[
-    interactions.Option(name="user", type=interactions.OptionType.USER, required=True, description="Daily user")])
-async def daily_points(ctx: interactions.CommandContext, user: interactions.User):
-    ptsEmbed = await getPoints(int(user.id))
+    interactions.Option(name="user", type=interactions.OptionType.USER, required=False, description="Daily user")])
+async def daily_points(ctx: interactions.CommandContext, user: interactions.User = None):
+    if user: uid = user.id
+    else: uid = ctx.user.id
+
+    ptsEmbed = await getPoints(int(uid))
     await ctx.send(embeds=ptsEmbed)
 
 @bot.command(name="daily_addchall", description="Add a daily challenge", options=[
