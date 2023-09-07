@@ -109,7 +109,7 @@ async def addPoints(user_id: int, pts: int, showEmbed: bool = True):
 
     if type(r) != interactions.Embed:
         if showEmbed:
-            return await successEmbed(f"{pts} points added to <@{user_id}>, they now have {r['points']} points")
+            return await successEmbed(f"{pts} points added to <@{user_id}>, they now have {r['points'] + pts} points")
         else:
             return
     return r
