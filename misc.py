@@ -247,7 +247,7 @@ async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, st
                                           "num": dailynum})
         dailyname = dtype.capitalize() if dtype != "daily1" and dtype != "daily2" \
                                        else f"Double Daily Friday {dtype[5]}"
-        await dailyLocalCollect()
+        await dChallsCollect()
         return await successEmbed(f'{dailyname} #{dailynum} *{name} by {creator}* added!')
     except Exception as e:
         return await errorEmbed(e)
@@ -257,7 +257,7 @@ async def editDaily(dtype: str, dailynum: int, dictReplace: dict):
     dailyname = dtype.capitalize() if dtype != "daily1" and dtype != "daily2" \
         else f"Double Daily Friday {dtype[5]}"
     if type(r) != interactions.Embed:
-        await dailyLocalCollect()
+        await dChallsCollect()
         return await successEmbed(f"{dailyname} #{dailynum} updated!")
     else:
         return r
