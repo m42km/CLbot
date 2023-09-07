@@ -544,7 +544,7 @@ async def daily_rejectcompletion(ctx: interactions.ComponentContext):
 async def daily_rejectconf(ctx: interactions.ComponentContext, reason):
     dailynum, dType, doubleDaily, user = await getDailyDetails(ctx.message.content, bot, token)
     dKey = dType.lower() if not doubleDaily else f"daily{doubleDaily}"
-    if dKey in dailyCurrSubs.keys():
+    if int(user.id) in dailyCurrSubs[dKey].keys():
         dailyCurrSubs[dKey].pop(int(user.id))
     await ctx.message.delete()
     await ctx.send(
@@ -567,7 +567,7 @@ async def daily_acceptcompletion(ctx: interactions.ComponentContext):
 async def daily_acceptconf(ctx: interactions.ComponentContext, confirmation=None):
     dailynum, dType, doubleDaily, user = await getDailyDetails(ctx.message.content, bot, token)
     dKey = dType.lower() if not doubleDaily else f"daily{doubleDaily}"
-    if dKey in dailyCurrSubs.keys():
+    if int(user.id) in dailyCurrSubs[dKey].keys():
         dailyCurrSubs[dKey].pop(int(user.id))
         dailyCurrAccepted[dKey].append(int(user.id))
 
