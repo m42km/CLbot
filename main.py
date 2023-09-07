@@ -29,11 +29,10 @@ dailyQueueChannel = None
 dailyAnnounceChannel = None
 doubleFriday = None
 
-dailyCurrSubs: dict = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
+dailyCurrSubs = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
                        "monthly": {}}
-dailyCurrAccepted: dict = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
-dailyCmdQueue: dict = {
-    34822: {"dtype": "daily", "doubledaily": False}}  # Pending video submissions
+dailyCurrAccepted = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
+dailyCmdQueue = {34822: {"dtype": "daily", "doubledaily": False}}  # Pending video submissions
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 headers = {"User-Agent": agent}
