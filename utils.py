@@ -398,7 +398,6 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     elif not discUser:
         res = await discToListUser(str(ctx.user.id))
         playerDiscordID = str(ctx.user.id)
-        print(res)
         if res != 0:
             p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={res}")
             p = p[0]
@@ -409,7 +408,6 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     else:
         res = await discToListUser(str(discUser.id))
         playerDiscordID = str(discUser.id)
-        print(res)
         if res != 0:
             p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={res}")
             p = p[0]
@@ -518,7 +516,6 @@ async def getChallButtons(lvlsLimit, pos) -> tuple:
     return lastDemon, nextDemon
 
 async def showCompletion(valsString: str):
-    print(valsString)
     vals = valsString.split(",")
     name, player, link, pos = vals[1], vals[2], "https://youtube.com/watch?v=" + vals[3], vals[4]
     suffix = "'s" if not name.lower().endswith('s') and not name.lower().endswith('z') else "'"

@@ -832,6 +832,7 @@ async def dailyLeaderboardNext(ctx: interactions.ComponentContext):
 
 @bot.command(name="updateroles", description="Update your cool stars, list points, etc. roles with this command")
 async def updateRoles(ctx: interactions.CommandContext):
+    d = await ctx.defer()
     userId = int(ctx.user.id)
     dCurrPoints = await getPointsInt(userId)
     lCurrPoints = await discToListPoints(str(userId))
@@ -858,7 +859,7 @@ async def updateRoles(ctx: interactions.CommandContext):
         embed = await successEmbed("No new roles added.")
     else:
         embed = await successEmbed("Added role(s): " + rolesList)
-    await ctx.send(embeds=embed)
+    await d.edit(embeds=embed)
 
 
 @bot.command(name="linkdiscord", description="Link a user's discord account to their Challenge List account",
