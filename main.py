@@ -859,7 +859,7 @@ async def updateRoles(ctx: interactions.CommandContext):
         embed = await successEmbed("No new roles added.")
     else:
         embed = await successEmbed("Added role(s): " + rolesList)
-    await d.send(embeds=embed)
+    await d.reply(embeds=embed)
 
 
 @bot.command(name="linkdiscord", description="Link a user's discord account to their Challenge List account",
