@@ -420,6 +420,8 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     cachedData = profileCache.get(p_id)
     if cachedData:
         embed = cachedData['baseEmbed']
+        embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}",
+                         icon_url=ctx.user.avatar_url)
         if completionLinks:
             components = await getProfileCompletions(name, p_id, cachedData['completions'], completionsPage)
             return embed, list(components)
