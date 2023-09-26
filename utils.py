@@ -502,7 +502,7 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     return embed if not completionLinks else [embed, components]
 
 @alru_cache(maxsize=512)
-async def getChallButtons(lvlsLimit, pos) -> tuple:
+async def getChallButtons(lvlsLimit, pos) -> interactions.ActionRow:
     lastDemon = interactions.Button(
         style=interactions.ButtonStyle.PRIMARY,
         label="Back",

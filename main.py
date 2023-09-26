@@ -480,16 +480,16 @@ async def nextchallenge(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx): return
     pos = int(await getSubstr(ctx.message.embeds[0].title, "#", ".")) + 1
     embed = await showChallenge(ctx, lvl_pos=pos)
-    lastDemon, nextDemon = await getChallButtons(lvlsLimit, pos)
-    await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
+    buttons = await getChallButtons(lvlsLimit, pos)
+    await ctx.edit(content="", embeds=embed, components=buttons)
 
 @bot.component("back_demon")
 async def backchallenge(ctx: interactions.ComponentContext):
     if not await checkInteractionPerms(ctx): return
     pos = int(ctx.message.embeds[0].title.split("#")[1].split(".")[0]) - 1
     embed = await showChallenge(ctx, lvl_pos=pos)
-    lastDemon, nextDemon = await getChallButtons(lvlsLimit, pos)
-    await ctx.edit(content="", embeds=embed, components=[lastDemon, nextDemon])
+    buttons = await getChallButtons(lvlsLimit, pos)
+    await ctx.edit(content="", embeds=embed, components=buttons)
 
 @bot.component("completions_menu")
 async def completions_menusel(ctx: interactions.ComponentContext, val):
