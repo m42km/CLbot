@@ -33,6 +33,7 @@ dailyCurrSubs = {"daily": {}, "daily1": {}, "daily2": {}, "weekly": {},
                        "monthly": {}}
 dailyCurrAccepted = {"daily": [], "daily1": [], "daily2": [], "weekly": [], "monthly": []}
 dailyCmdQueue = {34822: {"dtype": "daily", "doubledaily": False}}  # Pending video submissions
+submitRecordRatelimits = {34435453: 3600}
 
 agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 headers = {"User-Agent": agent}
@@ -126,7 +127,8 @@ async def on_ready():
                     for d in ('daily1', 'daily2', 'daily'):
                         dailyCurrAccepted[d] = []
                     await postDaily(dailyAnnounceChannel, dType, currDailies[dType])
-
+        for k in submitRecordRatelimits.keys():
+            submitRecordRatelimits[k] -= 30
         prevDailies = currDailies
         if i % 10 == 0:
             await updateLevels()
@@ -413,8 +415,6 @@ async def submitecord_cancel(ctx: interactions.ComponentContext):
 
 @bot.component("submitrecord_confirm")
 async def submitrecord_confirmed(ctx: interactions.ComponentContext):
-    if not await checkInteractionPerms(ctx):
-        return
     embed = ctx.message.embeds[0]
     challenge = embed.fields[0].value
     player = embed.fields[1].value
