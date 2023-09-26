@@ -515,7 +515,8 @@ async def getChallButtons(lvlsLimit, pos) -> tuple:
         custom_id="next_demon",
         disabled=False if (pos <= lvlsLimit) else True
     )
-    return lastDemon, nextDemon
+    actionRow = interactions.ActionRow(components=[lastDemon, nextDemon])
+    return actionRow
 
 async def showCompletion(valsString: str):
     vals = valsString.split(",")
