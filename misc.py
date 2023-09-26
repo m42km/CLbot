@@ -371,5 +371,5 @@ async def discToListPoints(discord_id: str):
     if listUsername == 0:
         return 0
     else:
-        pts = (await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={listUsername}"))[0]['scores']
+        pts = (await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={listUsername}"))[0]['score']
         return pts
