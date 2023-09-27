@@ -48,7 +48,7 @@ existingDailyUsers: list = []
 tz = timezone(timedelta(hours=-5)) # CDT (UTC-5)
 tz2 = timezone(timedelta(hours=0))
 
-dailyCalcDict = {"daily": {"date": datetime(2023, 6, 23, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
+dailyCalcDict = {"daily": {"date": datetime(2023, 6, 24, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
                                                              "weekly": {"date": datetime(2023, 7, 2, tzinfo=tz2), "offset": 158, "divSeconds": 604800},
                                                              "monthly": {"sum": 24283, "offset": 37}}
 
