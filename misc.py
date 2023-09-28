@@ -242,6 +242,7 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
     lines = msg.split("\n")
     dailynum = int(await getSubstr(lines[0], "y #", " S"))
     dType = await getSubstr(lines[0], "__", " #")
+    dms = True if "True" in lines[4] else False
     if "DDF" in lines[0]:
         # if the completion is for a double daily, return integer specifying which one (either 1 or 2)
         doubleDaily = int(await getSubstr(lines[0], "DDF #", ")"))
@@ -249,9 +250,9 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
         userID = int(await getSubstr(lines[1], "@", ">"))
         user = await interactions.get(client=client, obj=interactions.User, object_id=userID)
         user._client = interactions.HTTPClient(token, interactions.Cache())
-        return dailynum, dType, doubleDaily, user
+        return dailynum, dType, doubleDaily, dms, user
     else:
-        return dailynum, dType, doubleDaily
+        return dailynum, dType, doubleDaily, dms
 
 async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, stars: int) -> interactions.Embed:
     name, creator = await levelDetails(int(level_id))
