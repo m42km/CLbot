@@ -704,7 +704,7 @@ async def on_message_create(eventMsg: interactions.Message):  # New message hand
     msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + (
         "" if not doubledaily else f" (DDF #{doubledaily[5]})")
     msg += f"\n**User:** <@{userID}>\n**Proof Link:** {fixedUrl}\n**Player Notes:** {notes}"
-    msg += f"DMs {dms}"
+    msg += f"\n**DMs:** {dms}"
     dMsg = await dailyQueueChannel.send(content=msg,
                                         components=[dailyAcceptButton, dailyRejectButton, dailyNotesButton])
     dailyCmdQueue.pop(userID)
