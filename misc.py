@@ -4,10 +4,9 @@ from embeds import errorEmbed, successEmbed
 from req import requestGET
 import interactions
 from async_lru import alru_cache
-import motor.motor_asyncio as motorAsyncIO
+import motor.motor_asyncio as motor_async
 import os
 from json import load
-import json
 from gd import Client
 
 f = open("configdiscord.json")
@@ -27,19 +26,19 @@ notifyRoleID = miscConfig['roles']['notifyEvents']
 cli = Client()
 
 mongoURI = os.getenv("MONGO_URI")
-mongoClient: motorAsyncIO.AsyncIOMotorClient = motorAsyncIO.AsyncIOMotorClient(mongoURI)
+mongoClient: motor_async.AsyncIOMotorClient = motor_async.AsyncIOMotorClient(mongoURI)
 collection = mongoClient
 
-dailybotDB: motorAsyncIO.AsyncIOMotorDatabase = mongoClient['dailybotDB']
+dailybotDB: motor_async.AsyncIOMotorDatabase = mongoClient['dailybotDB']
 
-dailyChallenges: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['dailyLevels']
+dailyChallenges: motor_async.AsyncIOMotorCollection = dailybotDB['dailyLevels']
 dailyChallsLocal: dict = {"daily": {}, "weekly": {}, "monthly": {},
                           "daily1": {}, "daily2": {}}
 
 # https://challengelist.gd/api/v1/players/?after=4&before=6 to get acc id 5
 
-dailyUsers: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['dailyLeaderboard']
-listUsers: motorAsyncIO.AsyncIOMotorCollection = dailybotDB['clAccounts']
+dailyUsers: motor_async.AsyncIOMotorCollection = dailybotDB['dailyLeaderboard']
+listUsers: motor_async.AsyncIOMotorCollection = dailybotDB['clAccounts']
 discList: dict = {}
 listDisc: dict = {}
 # discord_id: text, account_id: int32
@@ -51,7 +50,7 @@ existingDailyUsers: list = []
 tz = timezone(timedelta(hours=-5))  # CDT (UTC-5)
 tz2 = timezone(timedelta(hours=0))
 
-dailyCalcDict = {"daily": {"date": datetime(2023, 6, 20, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
+dailyCalcDict = {"daily": {"date": datetime(2023, 6, 24, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
                  "weekly": {"date": datetime(2023, 7, 2, tzinfo=tz2), "offset": 158, "divSeconds": 604800},
                  "monthly": {"sum": 24283, "offset": 37}}
 
@@ -283,12 +282,13 @@ async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, st
     name, creator = await levelDetails(int(level_id))
     try:
         await dailyChallenges.insert_one({"name": name,
-                                              "creator": creator,
-                                              "discord_id": discord_id,
-                                              "level_id": level_id,
-                                              "dtype": dtype,
-                                              "stars": stars,
-                                              "num": dailynum})
+                                          "creator": creator,
+                                          "discord_id": discord_id,
+                                          "level_id": level_id,
+                                          "dtype": dtype,
+                                          "stars": stars,
+                                          "num": dailynum})
+
         dailyname = dtype.capitalize() if dtype != "daily1" and dtype != "daily2" \
             else f"Double Daily Friday {dtype[5]}"
         await dChallsCollect()
