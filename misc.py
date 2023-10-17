@@ -14,9 +14,12 @@ f = open("configdiscord.json")
 miscConfig = load(f)
 f.close()
 
-dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept", custom_id="daily_acceptsub")
-dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject", custom_id="daily_rejectsub")
-dailyNotesButton = interactions.Button(style=interactions.ButtonStyle.PRIMARY, label="Add/Set Notes", custom_id="daily_subnotes")
+dailyAcceptButton = interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Accept",
+                                        custom_id="daily_acceptsub")
+dailyRejectButton = interactions.Button(style=interactions.ButtonStyle.DANGER, label="Reject",
+                                        custom_id="daily_rejectsub")
+dailyNotesButton = interactions.Button(style=interactions.ButtonStyle.PRIMARY, label="Add/Set Notes",
+                                       custom_id="daily_subnotes")
 
 blobstarID = miscConfig['emojis']['blobstar']
 notifyRoleID = miscConfig['roles']['notifyEvents']
@@ -45,14 +48,15 @@ dailyUsersLeaderboard: list = []
 leaderboardIndex: dict = {}
 existingDailyUsers: list = []
 
-tz = timezone(timedelta(hours=-5)) # CDT (UTC-5)
+tz = timezone(timedelta(hours=-5))  # CDT (UTC-5)
 tz2 = timezone(timedelta(hours=0))
 
-dailyCalcDict = {"daily": {"date": datetime(2023, 6, 24, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
-                                                             "weekly": {"date": datetime(2023, 7, 2, tzinfo=tz2), "offset": 158, "divSeconds": 604800},
-                                                             "monthly": {"sum": 24283, "offset": 37}}
+dailyCalcDict = {"daily": {"date": datetime(2023, 6, 20, tzinfo=tz2), "offset": 1094, "divSeconds": 86400},
+                 "weekly": {"date": datetime(2023, 7, 2, tzinfo=tz2), "offset": 158, "divSeconds": 604800},
+                 "monthly": {"sum": 24283, "offset": 37}}
 
 dailyCol = 0xfafa45
+
 
 async def dailyLocalCollect():
     global dailyUsersLeaderboard, existingDailyUsers, dailyChallsLocal, leaderboardIndex
@@ -72,12 +76,15 @@ async def dailyLocalCollect():
     existingDailyUsers = existingDailyUsers2
     leaderboardIndex = leaderboardIndex2
 
+
 @alru_cache(maxsize=1000)
 async def getSubstr(s: str, after: str, before: str) -> str:
     return s[s.index(after) + len(after): s.index(before)]
 
+
 async def dUserExists(discord_id):
     return True if str(discord_id) in existingDailyUsers else False
+
 
 async def dUpdate(col, exp1, exp2):
     try:
@@ -86,12 +93,14 @@ async def dUpdate(col, exp1, exp2):
         r = await errorEmbed(e)
     return r
 
+
 async def dFind(col, exp):
     try:
         r = await col.find_one(exp)
     except Exception as e:
         r = await errorEmbed(e)
     return r
+
 
 async def lLinkAccount(discord_id: str, account_name: str) -> interactions.Embed:
     try:
@@ -102,6 +111,7 @@ async def lLinkAccount(discord_id: str, account_name: str) -> interactions.Embed
     except Exception as e:
         return await errorEmbed(e)
 
+
 async def lUnlinkAccount(discord_id: str) -> interactions.Embed:
     try:
         await listUsers.delete_one({"discord_id": discord_id})
@@ -110,11 +120,13 @@ async def lUnlinkAccount(discord_id: str) -> interactions.Embed:
     except Exception as e:
         return await errorEmbed(e)
 
+
 async def dFindUser(discord_id: int):
     if discord_id in dailyUsersLocal.keys():
         return dailyUsersLocal[discord_id]
     else:
         return False
+
 
 async def addPoints(user_id: int, pts: int, showEmbed: bool = True):
     exists = await dUserExists(user_id)
@@ -132,6 +144,7 @@ async def addPoints(user_id: int, pts: int, showEmbed: bool = True):
             return
     return r
 
+
 async def getPoints(user_id: int):
     if str(user_id) in existingDailyUsers:
         points, place = dailyUsersLocal[user_id], leaderboardIndex[dailyUsersLocal[user_id]]
@@ -141,11 +154,13 @@ async def getPoints(user_id: int):
     embed = interactions.Embed(title="Points", description=desc, color=0x5555FF)
     return embed
 
+
 async def getPointsInt(user_id: int):
     if str(user_id) in existingDailyUsers:
         return dailyUsersLocal[user_id]
     else:
         return 0
+
 
 async def setPoints(user_id: int, pts: int):
     exists = await dUserExists(user_id)
@@ -158,6 +173,7 @@ async def setPoints(user_id: int, pts: int):
     if type(r) != interactions.Embed:
         return await successEmbed(f"<@{user_id}>'s points set to {pts}")
     return r
+
 
 # async def dLeaderboardPos():
 #     pLbPipeline = [{'$match': {'points': {'$gte': 50}}}, {'$count': 'discord_id'}]
@@ -176,16 +192,18 @@ async def dLeaderboardDetails(title: str):
         limit = int(await getSubstr(title, "Top ", ")"))
     else:
         # ex: Daily Leaderboard (#11-20)
-        start = int(await getSubstr(title, "#", "-")) # start = 11
-        end = int(await getSubstr(title, "-", ")")) # end = 20
-        limit = end - start + 1 # limit = 10
-        page = ceil((start - 1) / limit) + 1 # page = 2
+        start = int(await getSubstr(title, "#", "-"))  # start = 11
+        end = int(await getSubstr(title, "-", ")"))  # end = 20
+        limit = end - start + 1  # limit = 10
+        page = ceil((start - 1) / limit) + 1  # page = 2
     return page, limit
+
 
 @alru_cache(maxsize=500)
 async def dLeaderboardTitle(page: int, limit: int):
     after = (page - 1) * limit
     return f"Daily Leaderboard (#{after + 1}-{after + limit})"
+
 
 @alru_cache(maxsize=500)
 async def dLeaderboardButtons(page: int, limit: int):
@@ -207,6 +225,7 @@ async def dLeaderboardButtons(page: int, limit: int):
 
     return backButton, nextButton
 
+
 async def dailyLeaderboard(ctx, page: int = 1, limit: int = 10, title: str = None):
     start = ((page - 1) * limit)
     desc, backButton, nextButton = "", None, None
@@ -216,7 +235,8 @@ async def dailyLeaderboard(ctx, page: int = 1, limit: int = 10, title: str = Non
             desc += f"**#{start + i}:** <@{doc['discord_id']}> - {doc['points']} point{'' if doc['points'] == 1 else 's'}\n"
             i += 1
         suffix = f" (Top {limit})" if page == 1 else f" (#{start + 1}-{start + limit})"
-        embed = interactions.Embed(title=("Daily Leaderboard" + suffix) if not title else title, description=desc, color=dailyCol)
+        embed = interactions.Embed(title=("Daily Leaderboard" + suffix) if not title else title, description=desc,
+                                   color=dailyCol)
         embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}",
                          icon_url=ctx.user.avatar_url)
         backButton, nextButton = await dLeaderboardButtons(page, limit)
@@ -225,17 +245,21 @@ async def dailyLeaderboard(ctx, page: int = 1, limit: int = 10, title: str = Non
 
     return embed, backButton, nextButton
 
+
 @alru_cache(maxsize=256)
 async def isFridayDaily(i: int) -> bool:
     return ((i - 1080) % 7) == 0
 
+
 async def isFriday():
     return datetime.now().weekday() == 4
 
-@alru_cache(maxsize=512) # cache limit should be enough
+
+@alru_cache(maxsize=512)  # cache limit should be enough
 async def levelDetails(levelID: int):
     level = await cli.get_level(level_id=levelID)
     return level.name, level.creator.name
+
 
 async def getDailyDetails(msg: str, client: interactions.Client, token: str, getUser: bool = True):
     doubleDaily = False
@@ -254,22 +278,24 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
     else:
         return dailynum, dType, doubleDaily, dms
 
+
 async def addDaily(discord_id: str, level_id: str, dtype: str, dailynum: int, stars: int) -> interactions.Embed:
     name, creator = await levelDetails(int(level_id))
     try:
-        r = await dailyChallenges.insert_one({"name": name,
-                                          "creator": creator,
-                                          "discord_id": discord_id,
-                                          "level_id": level_id,
-                                          "dtype": dtype,
-                                          "stars": stars,
-                                          "num": dailynum})
+        await dailyChallenges.insert_one({"name": name,
+                                              "creator": creator,
+                                              "discord_id": discord_id,
+                                              "level_id": level_id,
+                                              "dtype": dtype,
+                                              "stars": stars,
+                                              "num": dailynum})
         dailyname = dtype.capitalize() if dtype != "daily1" and dtype != "daily2" \
-                                       else f"Double Daily Friday {dtype[5]}"
+            else f"Double Daily Friday {dtype[5]}"
         await dChallsCollect()
         return await successEmbed(f'{dailyname} #{dailynum} *{name} by {creator}* added!')
     except Exception as e:
         return await errorEmbed(e)
+
 
 async def editDaily(dtype: str, dailynum: int, dictReplace: dict):
     r = await dUpdate(dailyChallenges, {"dtype": dtype, "num": dailynum}, {"$set": dictReplace})
@@ -281,22 +307,24 @@ async def editDaily(dtype: str, dailynum: int, dictReplace: dict):
     else:
         return r
 
+
 async def getDailyPoints(dtype: str, dailynum: int):
     if dailynum in dailyChallsLocal[dtype].keys():
         return dailyChallsLocal[dtype][dailynum]['stars']
     return None
+
 
 async def getDailyDoc(dtype: str, dailynum: int):
     if dailynum in dailyChallsLocal[dtype].keys():
         return dailyChallsLocal[dtype][dailynum]
     return None
 
+
 async def getDailyInfo(dtype: str, dailynum: int):
     d = await getDailyDoc(dtype, dailynum)
     if d:
         return f"*{d['name']}* by {d['creator']} ( {d['stars']} <:blobstar:{blobstarID}> )"
     return "None!"
-
 
 
 async def listUsersCollect():
@@ -312,10 +340,12 @@ async def listUsersCollect():
     discList = discList2
     listDisc = listDisc2
 
+
 async def dChallsCollect():
     dChallsNew = await dailyChallenges.aggregate([{'$sort': {'num': -1}}]).to_list(length=None)
     for challenge in dChallsNew:
         dailyChallsLocal[challenge['dtype']].update({challenge['num']: challenge})
+
 
 async def calcCurrDaily(dType: str = "daily") -> int:
     calcDict = dailyCalcDict[dType]
@@ -326,9 +356,11 @@ async def calcCurrDaily(dType: str = "daily") -> int:
     else:
         return round(((dtNow.month + dtNow.year * 12) - calcDict['sum']) / 12) + calcDict['offset']
 
+
 async def fixEmbedVideo(s: str):
     fixed = s.replace("cdn.discordapp.com", "media.discordapp.net")
     return fixed
+
 
 async def postDaily(channel: interactions.Channel, dtype: str, num: int):
     d = await getDailyDoc(dtype, num)
@@ -346,7 +378,7 @@ async def postDaily(channel: interactions.Channel, dtype: str, num: int):
 
     dMessage = await channel.send(content=msg)
     if dtype == "daily":
-        return # don't pin dailies
+        return  # don't pin dailies
 
     pins = await channel.get_pinned_messages()
     await channel.pin_message(dMessage)
@@ -355,11 +387,13 @@ async def postDaily(channel: interactions.Channel, dtype: str, num: int):
             await channel.unpin_message(msg)
             break
 
+
 async def discToListUser(discord_id: str):
     if discord_id not in discList.keys():
         return 0
     else:
         return discList[discord_id]
+
 
 async def listToDisc(account_name: str):
     if account_name not in listDisc.keys():
@@ -367,10 +401,12 @@ async def listToDisc(account_name: str):
     else:
         return f"{listDisc[account_name]}"
 
+
 async def discToListPoints(discord_id: str):
     listUsername = await discToListUser(discord_id)
     if listUsername == 0:
         return 0
     else:
-        pts = (await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={listUsername}"))[0]['score']
+        pts = (await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={listUsername}"))[0][
+            'score']
         return pts
