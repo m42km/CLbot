@@ -12,6 +12,9 @@ profileCompsCache = {} # profile completion cache
 # sample: {384: {'completions': completionsJson, 'baseEmbed': embed, 'detailComps': components}}
 embedCol2 = 0xfafa00
 
+# level IDs and NONGs contributed by h0008 on discord, parsed into json by me
+challenge_info = {182: {'levelID': '60805571', 'songPath': 'Downloadable in GD'}, 176: {'levelID': '68963370', 'songPath': 'Downloadable in GD'}, 194: {'levelID': '76767195', 'songPath': '194/818027.mp3'}, 193: {'levelID': '76213334', 'songPath': '193/543943.mp3'}, 293: {'levelID': '8504220', 'songPath': 'Downloadable in GD'}, 217: {'levelID': '69766474', 'songPath': 'Downloadable in GD'}, 10: {'levelID': '61614466', 'songPath': 'Downloadable in GD'}, 229: {'levelID': '50542904', 'songPath': 'Downloadable in GD'}, 249: {'levelID': '67862379', 'songPath': 'Downloadable in GD'}, 305: {'levelID': '94294850', 'songPath': '305/503732.mp3'}, 237: {'levelID': '80993342', 'songPath': '237/412437.mp3'}, 277: {'levelID': '90589855', 'songPath': 'Downloadable in GD'}, 221: {'levelID': '81973761', 'songPath': '221/8800.mp3'}, 267: {'levelID': '86047466', 'songPath': 'Downloadable in GD'}, 278: {'levelID': '90059503', 'songPath': '278/7676.mp3'}, 299: {'levelID': '90432431', 'songPath': '299/70.mp3'}, 259: {'levelID': '73199960', 'songPath': '259/251266.mp3'}, 98: {'levelID': '65348932', 'songPath': 'Downloadable in GD'}, 253: {'levelID': '85701165', 'songPath': 'Downloadable in GD'}, 184: {'levelID': '73859288', 'songPath': 'Downloadable in GD'}, 189: {'levelID': '73227169', 'songPath': 'Downloadable in GD'}, 255: {'levelID': '85856340', 'songPath': 'Downloadable in GD'}, 241: {'levelID': '83951746', 'songPath': 'Downloadable in GD'}, 250: {'levelID': '64919670', 'songPath': 'Downloadable in GD'}, 104: {'levelID': '65496433', 'songPath': '104/447407.mp3'}, 265: {'levelID': '89065307', 'songPath': '265/144.mp3'}, 238: {'levelID': '81932491', 'songPath': 'Downloadable in GD'}, 309: {'levelID': '82292775', 'songPath': 'Downloadable in GD'}, 179: {'levelID': '71530517', 'songPath': 'Downloadable in GD'}, 169: {'levelID': '55392313', 'songPath': 'Downloadable in GD'}, 200: {'levelID': '76663114', 'songPath': 'Downloadable in GD'}, 282: {'levelID': '91790026', 'songPath': '282/1045842.mp3'}, 283: {'levelID': '91995939', 'songPath': '283/500.mp3'}, 260: {'levelID': '87167091', 'songPath': 'Downloadable in GD'}, 270: {'levelID': '64699070', 'songPath': '270/753446.mp3'}, 219: {'levelID': '81023078', 'songPath': '219/481793.mp3'}, 213: {'levelID': '78843980', 'songPath': 'Downloadable in GD'}, 231: {'levelID': '73485796', 'songPath': 'Downloadable in GD'}, 271: {'levelID': '88720184', 'songPath': 'Downloadable in GD'}, 243: {'levelID': '83240981', 'songPath': '243/554.mp3'}, 261: {'levelID': '85492845', 'songPath': 'Downloadable in GD'}, 308: {'levelID': '93060038', 'songPath': 'Downloadable in GD'}, 306: {'levelID': '94141413', 'songPath': 'Downloadable in GD'}, 246: {'levelID': '85287416', 'songPath': 'Downloadable in GD'}, 248: {'levelID': '86301889', 'songPath': 'Downloadable in GD'}, 289: {'levelID': '94008996', 'songPath': '289/9890078.mp3'}, 264: {'levelID': '87199786', 'songPath': 'Downloadable in GD'}, 301: {'levelID': '95575376', 'songPath': 'Downloadable in GD'}, 252: {'levelID': '86892186', 'songPath': '252/555.mp3'}, 2: {'levelID': '57696990', 'songPath': 'Downloadable in GD'}, 303: {'levelID': '95932464', 'songPath': 'Downloadable in GD'}, 216: {'levelID': '75610390', 'songPath': 'Downloadable in GD'}, 304: {'levelID': '90202908', 'songPath': '304/727.mp3'}, 3: {'levelID': '61595973', 'songPath': 'Downloadable in GD'}, 218: {'levelID': '66086403', 'songPath': 'Downloadable in GD'}, 223: {'levelID': '80020830', 'songPath': 'Downloadable in GD'}, 196: {'levelID': '74071137', 'songPath': 'Downloadable in GD'}, 239: {'levelID': '82056731', 'songPath': 'Downloadable in GD'}, 310: {'levelID': '63354658', 'songPath': '310/3996.mp3'}, 290: {'levelID': '89699296', 'songPath': '290/500.mp3'}, 165: {'levelID': '44813027', 'songPath': '165/528176.mp3'}, 258: {'levelID': '68865649', 'songPath': 'Downloadable in GD'}, 138: {'levelID': '67201478', 'songPath': 'Downloadable in GD'}, 168: {'levelID': '68427226', 'songPath': 'Downloadable in GD'}, 4: {'levelID': '62076892', 'songPath': 'Downloadable in GD'}, 268: {'levelID': '86471614', 'songPath': 'Downloadable in GD'}, 269: {'levelID': '87879271', 'songPath': 'Downloadable in GD'}, 296: {'levelID': '91865258', 'songPath': 'Downloadable in GD'}, 275: {'levelID': '88759593', 'songPath': 'Downloadable in GD'}, 307: {'levelID': '78369186', 'songPath': 'Downloadable in GD'}, 191: {'levelID': '73880628', 'songPath': 'Downloadable in GD'}, 256: {'levelID': '87806161', 'songPath': '256/159756.mp3'}, 210: {'levelID': '72619140', 'songPath': 'Downloadable in GD'}, 291: {'levelID': '92636293', 'songPath': '291/983482.mp3'}, 295: {'levelID': '85678458', 'songPath': 'Downloadable in GD'}, 204: {'levelID': '74226067', 'songPath': 'Downloadable in GD'}, 146: {'levelID': '67600557', 'songPath': 'Downloadable in GD'}, 273: {'levelID': '64623383', 'songPath': '273/464352.mp3'}, 236: {'levelID': '83167733', 'songPath': 'Downloadable in GD'}, 233: {'levelID': '83025010', 'songPath': 'Downloadable in GD'}, 9: {'levelID': '59205220', 'songPath': 'Downloadable in GD'}, 287: {'levelID': '94491756', 'songPath': '287/548062.mp3'}, 288: {'levelID': '87635789', 'songPath': '288/137.mp3'}, 300: {'levelID': '95666005', 'songPath': '300/8803.mp3'}, 134: {'levelID': '66663246', 'songPath': 'Downloadable in GD'}, 226: {'levelID': '75236355', 'songPath': 'Downloadable in GD'}, 187: {'levelID': '73235646', 'songPath': 'Downloadable in GD'}, 263: {'levelID': '79014395', 'songPath': '263/40.mp3'}, 292: {'levelID': '90099151', 'songPath': '292/42822.mp3'}, 257: {'levelID': '87558350', 'songPath': '257/14141.mp3'}, 262: {'levelID': '85573922', 'songPath': '262/215.mp3'}, 201: {'levelID': '76750622', 'songPath': '201/56.mp3'}, 284: {'levelID': '94269132', 'songPath': '284/33037.mp3'}, 298: {'levelID': '95143882', 'songPath': '298/34333.mp3'}, 302: {'levelID': '87328218', 'songPath': 'Downloadable in GD'}, 286: {'levelID': '94184192', 'songPath': 'Downloadable in GD'}, 220: {'levelID': '73149969', 'songPath': 'Downloadable in GD'}, 224: {'levelID': '75972097', 'songPath': '224/984786.mp3'}, 242: {'levelID': '80813692', 'songPath': 'Downloadable in GD'}}
+
 async def clearCache():
     global profileCache
     profileCache = {}
@@ -192,6 +195,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
 
     f_level = (await requestGET(f"https://challengelist.gd/api/v1/demons/{g_level['position']}"))['data']
 
+    challenge_id = f_level['id']
     name, creator, position = f_level['name'], f_level['publisher']['name'], f"#{f_level['position']}"
     verifier, verification_video, level_id = f_level['verifier']['name'], f_level['video'], f_level['level_id']
     fps = f_level['fps'] if f_level['fps'] else "Any"
@@ -228,15 +232,20 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
     embed = interactions.Embed(color=embedCol, title=f"{position}. {name}")
     embed.set_thumbnail(url=thumbnail)
     embed.set_footer(text=f"Requested by {ctx.user.username} • ID: {str(ctx.user.id)}", icon_url=ctx.user.avatar_url)
-    info = (("Creator(s)", creator),
+
+    chall_info_dict = challenge_info.get(challenge_id, {'levelID': None, 'songPath': 'N/A'})
+
+    info = [("Creator(s)", creator),
             ("\u200B", "\u200B"),
             ("Verifier", f"[{verifier}]({verification_video})"),
-            ("Level ID", level_id if level_id else "N/A"),
             ("FPS(s)", fps),
-            ("Points Awarded", str(points)))
+            ("Points Awarded", str(points)),
+            ("Level ID", chall_info_dict['levelID'] if chall_info_dict['levelID'] else (level_id if level_id else 'N/A'))]
+    if chall_info_dict['songPath'] != "N/A":
+        info.append(('Song/NONG', ('https://challengelist.rf.gd/nongs/' + chall_info_dict['songPath']) if 'Downloadable' not in chall_info_dict['SongPath'] else 'Downloadable in GD'))
 
-    for i in info:
-        embed.add_field(name=i[0], value=i[1], inline=True)
+    for field_name, content in info:
+        embed.add_field(name=field_name, value=content, inline=True)
 
     if len(full_victors) > 1:
         victorCount = round(full_victors[0].count(' ') / 2)
@@ -477,18 +486,16 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     embed.add_field(name="Nationality", value=f"{p['nationality']['nation'] if p['nationality'] else 'N/A'}", inline=True)
     embed.add_field(name="Rank", value=f"#{rank} {badge}", inline=True)
     embed.add_field(name="List Points", value=f"{round(p['score'], 2)}", inline=True)
+
     if playerDiscordID:
         embed.add_field(name="Discord", value=f"<@{playerDiscordID}>", inline=True)
         embed.add_field(name="Cool-Stars", value=str(await getPointsInt(int(playerDiscordID))), inline=True)
+
     embed.add_field(name="Challenges created", value=created_demons, inline=True)
     embed.add_field(name="Verified challenges", value=verified_demons, inline=True if len(verified_demons) < 200 else False)
 
-    embed.add_field(name="Completed challenges",
-                    value=(completed_demons[:charLimit] + "...") if len(completed_demons) > charLimit else completed_demons)
-    embed.add_field(name="Completed challenges (legacy)",
-                    value=(legacy_demons[:charLimit] + "...") if len(legacy_demons) > charLimit else legacy_demons)
-    embed.add_field(name="Completed challenges (removed)",
-                    value=(removed_demons[:charLimit] + "...") if len(removed_demons) > charLimit else removed_demons)
+    for label, completions in zip(["Completed challenges", "Completed challenges (legacy)", "Completed challenges (removed)"], [completed_demons, legacy_demons, removed_demons]):
+        embed.add_field(name=label, value=(completions[:charLimit] + "...") if len(completions) > charLimit else completions)
     embed.set_thumbnail(url=thumb)
     # sample: {384: {'completions': completionsJson, 'baseEmbed': embed, 'detailComps': components}}
     components = None
