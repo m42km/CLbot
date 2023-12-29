@@ -242,7 +242,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
             ("Points Awarded", str(points)),
             ("Level ID", chall_info_dict['levelID'] if chall_info_dict['levelID'] else (level_id if level_id else 'N/A'))]
     if chall_info_dict['songPath'] != "N/A":
-        info.append(('Song/NONG', ('https://challengelist.rf.gd/nongs/' + chall_info_dict['songPath']) if 'Downloadable' not in chall_info_dict['SongPath'] else 'Downloadable in GD'))
+        info.append(('Song/NONG', ('https://challengelist.rf.gd/nongs/' + chall_info_dict['songPath']) if 'Downloadable' not in chall_info_dict['songPath'] else 'Downloadable in GD'))
 
     for field_name, content in info:
         embed.add_field(name=field_name, value=content, inline=True)
