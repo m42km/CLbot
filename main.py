@@ -431,8 +431,7 @@ async def submitrecord_confirmed(ctx: interactions.ComponentContext):
         if challenge != "\" \"":
             demon_id = 249  # the exception
         else:
-            demon_id = \
-            (await requestGET(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0]["id"]
+            demon_id = (await requestGET(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0]["id"]
 
         await requestPOST(session, "https://challengelist.gd/api/v1/records/",
                           data={"demon": demon_id, "player": player, "video": video,
