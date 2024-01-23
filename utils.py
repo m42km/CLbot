@@ -258,6 +258,7 @@ async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challeng
             victorCount += full_victors[i].count(',') + 1
     else:
         embed.add_field(name="Challenge victors", value=full_victors[0] if full_victors[0] else "None!", inline=False)
+
     while len(str(embed._json)) > 5500: # shorten amount of victors if too large
         embed.remove_field(len(embed.fields) - 1)
         lenFields = len(embed.fields) - 1 # how many embed fields there are
@@ -340,6 +341,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         return tuple([embed, actionRow, actionRow2])
 
 async def getProfileCompletions(name: str, p_id: int, completions: list, page: int = 1):
+    """Return a """
     if not completions:
         return None
     cachedData = profileCompsCache.get(p_id)
@@ -371,14 +373,13 @@ async def getProfileCompletions(name: str, p_id: int, completions: list, page: i
 
     profileCompsCache.update({p_id: comps})
     # comps = tuple[ActionRow], tuple[tuple[Button]]
-    return fOpts[0], buttonSets[0]
     # returns one actionrow and a tuple of two buttons
+    return fOpts[0], buttonSets[0]
+
 
 async def getProfile(ctx, name: str = None, discUser: interactions.User = None, completionLinks: bool = False, embedCol: int = 0xffae00, completionsPage: int = 1):
     """Returns a profile embed, a profile embed and components or returns ``None`` if player can't be found."""
 
-    playerDiscordID = None
-    coolStars = None
     if name:
         p = await requestGET(f"https://challengelist.gd/api/v1/players/ranking/?name_contains={name}")
         if not p:
@@ -441,7 +442,7 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
     badge = "" if rank > 3 else {1: ':first_place:', 2: ':second_place:', 3: ':third_place:'}[rank]
     more_details = (await requestGET(f"https://challengelist.gd/api/v1/players/{p_id}"))['data']
 
-    for sLevels in ['created', 'published', 'verified', 'records']: # very swag python code
+    for sLevels in ['created', 'published', 'verified', 'records']:
         more_details.update({sLevels: sorted(more_details[sLevels], key=lambda pos: pos['position'] if sLevels != 'records' else pos['demon']['position'])})
 
     created_demons = []
@@ -525,6 +526,7 @@ async def getChallButtons(lvlsLimit, pos) -> interactions.ActionRow:
     actionRow = interactions.ActionRow(components=[lastDemon, nextDemon])
     return actionRow
 
+@alru_cache(maxsize=512)
 async def showCompletion(valsString: str):
     vals = valsString.split(",")
     name, player, link, pos = vals[1], vals[2], "https://youtube.com/watch?v=" + vals[3], vals[4]

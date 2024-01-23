@@ -431,7 +431,9 @@ async def submitrecord_confirmed(ctx: interactions.ComponentContext):
         if challenge != "\" \"":
             demon_id = 249  # the exception
         else:
-            demon_id = (await requestGET(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0]["id"]
+            demon_id = \
+                (await requestGET(f"https://challengelist.gd/api/v1/records/demons/?name_contains={challenge}"))[0][
+                    "id"]
 
         await requestPOST(session, "https://challengelist.gd/api/v1/records/",
                           data={"demon": demon_id, "player": player, "video": video,
@@ -475,7 +477,8 @@ async def getchallenge(ctx: interactions.CommandContext, level: str = None, posi
 
 @bot.component("levelcorrect")
 async def levelcorrect(ctx: interactions.ComponentContext):
-    if not await checkInteractionPerms(ctx): return
+    if not await checkInteractionPerms(ctx):
+        return
     lvl = ctx.component.label
     embed, pos = await showChallenge(ctx, lvl_name=lvl)
     lastDemon, nextDemon = await getChallButtons(lvlsLimit, pos)
@@ -580,6 +583,8 @@ async def daily_acceptcompletion(ctx: interactions.ComponentContext):
 
 @bot.modal("daily_acceptmodal")
 async def daily_acceptconf(ctx: interactions.ComponentContext, confirmation=None):
+    # ^ don't use the `confirmation` parameter, this is just needed to be passed as an argument by
+    # the library when the modal confirmation button is clicked on
     dailynum, dType, doubleDaily, dms, user = await getDailyDetails(ctx.message.content, bot, token)
     dKey = dType.lower() if not doubleDaily else f"daily{doubleDaily}"
     if int(user.id) in dailyCurrSubs[dKey].keys():
@@ -632,29 +637,47 @@ async def daily_subnotescomp(ctx: interactions.ComponentContext, compnotes: str)
                                               interactions.Choice(name="Double Daily Friday #1", value="daily1"),
                                               interactions.Choice(name="Double Daily Friday #2", value="daily2")
                                           ]),
+                      interactions.Option(name="video", description="Completion video",
+                                          type=interactions.OptionType.ATTACHMENT, required=True),
                       interactions.Option(name="notes", description="Additional completion notes",
                                           type=interactions.OptionType.STRING, required=False),
                       interactions.Option(name="direct_message",
                                           description="Set to True if you want to be DMed on acceptance or rejection, set to False otherwise",
                                           type=interactions.OptionType.BOOLEAN, required=False)
                       ])
-async def daily_submitcompletion(ctx: interactions.CommandContext, dtype: str, notes: str = None,
+async def daily_submitcompletion(ctx: interactions.CommandContext, dtype: str, video: interactions.Attachment, notes: str = None,
                                  direct_message: bool = False):
     userID = int(ctx.user.id)
     doubledaily = dtype[5] if "1" in dtype or "2" in dtype else False
-    dKey = dtype
+
     if (doubledaily and not doubleFriday) or (doubledaily and dtype != "daily"):
         await ctx.send("Today is not Double Daily Friday/your submission is not for a double daily!")
         return
-    if userID in dailyCurrSubs[dKey] or userID in dailyCurrAccepted[dKey]:
+    if userID in dailyCurrSubs[dtype] or userID in dailyCurrAccepted[dtype]:
         await ctx.send(f"You have already submitted a {dtype} submission/it has already been accepted!")
         return
     if doubleFriday and not doubledaily and dtype == "daily":
         await ctx.send(f"Today is Double Daily Friday, please pick one of the Double Dailies!")
         return
 
-    dailyCmdQueue.update({userID: {"dtype": dtype, "doubledaily": doubledaily, "notes": notes, "dms": direct_message}})
-    await ctx.send("Please reply to this message with **a video** of your completion.")
+    if "video" not in video.content_type:
+        await ctx.send("Your submission must be in video form!")
+        return
+
+    dKey = dtype if not doubledaily else doubledaily
+
+    msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + (
+        "" if not doubledaily else f" (DDF #{doubledaily[5]})")
+    msg += f"\n**User:** <@{userID}>\n**Player Notes:** {notes}"
+    dMsg = await dailyQueueChannel.send(content=msg,
+                                        components=[dailyAcceptButton, dailyRejectButton, dailyNotesButton],
+                                        attachments=[video])
+    dailyCmdQueue.pop(userID)
+    dailyCurrSubs[dKey].update({userID: dMsg})
+    await ctx.send(
+        f"{dtype.capitalize()} #{currDailies[dtype]} completion submitted! Please wait a couple days for daily managers to review your submission.")
+    # dailyCmdQueue.update({userID: {"dtype": dtype, "doubledaily": doubledaily, "notes": notes, "dms": direct_message}})
+    # await ctx.send("Please reply to this message with **a video** of your completion.")
 
 
 @bot.command(name="daily_cancelcomp", description="Cancel your daily submission.",
@@ -685,31 +708,6 @@ async def daily_cancelcomp(ctx: interactions.CommandContext, dtype: str, doubled
         await dailyCurrSubs[dKey][userID].delete(reason="Submission cancelled")
         dailyCurrSubs[dKey].pop(userID)
         await ctx.send(f"Submission cancelled.")
-
-
-@bot.event
-async def on_message_create(eventMsg: interactions.Message):  # New message handler
-    userID = int(eventMsg.author.id)
-    if eventMsg.channel_id != dailySubsChannelID or userID not in dailyCmdQueue.keys() or not eventMsg.attachments:
-        return
-    if "video" not in eventMsg.attachments[0].content_type:
-        await eventMsg.reply("Your submission must be in video form!")
-    uDict = dailyCmdQueue[userID]
-
-    dtype, doubledaily, notes, dms = uDict['dtype'], uDict['doubledaily'], uDict['notes'], uDict['dms']
-    dKey = dtype if not doubledaily else doubledaily
-
-    fixedUrl = await fixEmbedVideo(eventMsg.attachments[0].url)
-    msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + (
-        "" if not doubledaily else f" (DDF #{doubledaily[5]})")
-    msg += f"\n**User:** <@{userID}>\n**Proof Link:** {fixedUrl}\n**Player Notes:** {notes}"
-    msg += f"\n**DMs:** {dms}"
-    dMsg = await dailyQueueChannel.send(content=msg,
-                                        components=[dailyAcceptButton, dailyRejectButton, dailyNotesButton])
-    dailyCmdQueue.pop(userID)
-    dailyCurrSubs[dKey].update({userID: dMsg})
-    await eventMsg.reply(
-        f"{dtype.capitalize()} #{currDailies[dtype]} completion submitted! Please wait a couple days for daily managers to review your submission.")
 
 
 # test command / will remove later
