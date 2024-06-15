@@ -354,7 +354,7 @@ async def calcCurrDaily(dType: str = "daily") -> int:
         diff = (dtNow - calcDict['date']).total_seconds() / calcDict['divSeconds']
         return floor(diff) + calcDict['offset']
     else:
-        return round(((dtNow.month + dtNow.year * 12) - calcDict['sum']) / 12) + calcDict['offset']
+        return (dtNow.month + dtNow.year * 12) - calcDict['sum'] + calcDict['offset']
 
 
 async def fixEmbedVideo(s: str):
