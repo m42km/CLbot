@@ -796,7 +796,10 @@ async def add_nextdaily(ctx: interactions.CommandContext, dailytype: str, dailyi
 async def daily_nums(ctx: interactions.CommandContext):
     embedDesc = ""
     for dtype in ["daily", "weekly", "monthly"]:
-        inf = await getDailyInfo(dtype, currDailies[dtype])
+        try:
+            inf = await getDailyInfo(dtype, currDailies[dtype])
+        except KeyError:
+            inf = "None set!"
         embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} {inf}\n"
     embed = interactions.Embed(name="Current Dailies", description=embedDesc)
     await ctx.send(embeds=embed)
