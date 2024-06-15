@@ -9,7 +9,7 @@ import os
 from json import load
 from gd import Client
 
-f = open("configdiscord.json")
+f = open("configdiscord.json", "r")
 miscConfig = load(f)
 f.close()
 

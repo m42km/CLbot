@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
 from json import load
+import random
 
 load_dotenv()
 
-f = open("configdiscord.json")
+f = open("configdiscord.json", "r")
 config = load(f)
 f.close()
 
@@ -665,14 +666,14 @@ async def daily_submitcompletion(ctx: interactions.CommandContext, dtype: str, v
         return
 
     dKey = dtype if not doubledaily else doubledaily
+    user_video = await video.download()
 
     msg = f"## __{dtype.capitalize()} #{currDailies[dtype]} Submission__" + (
         "" if not doubledaily else f" (DDF #{doubledaily[5]})")
     msg += f"\n**User:** <@{userID}>\n**Player Notes:** {notes}"
     dMsg = await dailyQueueChannel.send(content=msg,
                                         components=[dailyAcceptButton, dailyRejectButton, dailyNotesButton],
-                                        attachments=[video])
-    dailyCmdQueue.pop(userID)
+                                        files=[interactions.File(video.filename, fp=user_video)])
     dailyCurrSubs[dKey].update({userID: dMsg})
     await ctx.send(
         f"{dtype.capitalize()} #{currDailies[dtype]} completion submitted! Please wait a couple days for daily managers to review your submission.")
@@ -710,7 +711,6 @@ async def daily_cancelcomp(ctx: interactions.CommandContext, dtype: str, doubled
         await ctx.send(f"Submission cancelled.")
 
 
-# test command / will remove later
 @bot.command(name="senddaily", description="send daily", options=[
     interactions.Option(name="dailytype", type=interactions.OptionType.STRING, required=True, description="Daily ID",
                         choices=[
