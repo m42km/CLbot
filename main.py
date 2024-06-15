@@ -88,7 +88,6 @@ async def on_ready():
     await dailyLocalCollect()
     await dChallsCollect()
     await listUsersCollect()
-    await updateLevels()
 
     PList = [25, 50, 100, 250, 500, 750,
              1000, 1500, 2000, 3000, 4000,
@@ -112,6 +111,7 @@ async def on_ready():
     prevDailies = {"daily": await calcCurrDaily("daily"),
                    "monthly": await calcCurrDaily("monthly"),
                    "weekly": await calcCurrDaily("weekly")}
+    await updateLevels()
     while True:
         t1 = datetime.now()
         # print(prevDailies, currDailies)
@@ -796,10 +796,7 @@ async def add_nextdaily(ctx: interactions.CommandContext, dailytype: str, dailyi
 async def daily_nums(ctx: interactions.CommandContext):
     embedDesc = ""
     for dtype in ["daily", "weekly", "monthly"]:
-        try:
-            inf = await getDailyInfo(dtype, currDailies[dtype])
-        except KeyError:
-            inf = "None set!"
+        inf = await getDailyInfo(dtype, currDailies[dtype])
         embedDesc += f"**{dtype.capitalize()}: ** #{currDailies[dtype]} {inf}\n"
     embed = interactions.Embed(name="Current Dailies", description=embedDesc)
     await ctx.send(embeds=embed)
