@@ -141,7 +141,7 @@ async def getChallenges(ctx, limit, after, title, challenges_list: tuple = None)
                                               demon['verifier']['name'], demon['video']
         points = await calcPoints(pos)
         # Add options and embed fields for all levels
-        options.append(interactions.SelectOption(
+        options.append(interactions.StringSelectOption(
             label=f"{name if name else 'blank'} by {creator}",
             value=f"selectchall_{pos}",
             description=f"#{pos} - {points} points",
@@ -161,8 +161,8 @@ async def getChallenges(ctx, limit, after, title, challenges_list: tuple = None)
     if not options:
         return
     else:
-        selMenu = interactions.SelectMenu(options=options, max_value=1, type=interactions.ComponentType.SELECT, custom_id="getchallenges_menu", placeholder="Select challenge for more info on it..")
-        actionRow = interactions.ActionRow(components=[selMenu])
+        selMenu = interactions.StringSelectMenu(*options, max_values=1, custom_id="getchallenges_menu", placeholder="Select challenge for more info on it..")
+        actionRow = interactions.ActionRow(selMenu)
         return embed, actionRow
 
 async def showChallenge(ctx, lvl_name: str = None, lvl_pos: int = None, challenge_names: tuple = None, embedCol: int = 0xffae00):
@@ -323,7 +323,7 @@ async def getLeaderboard(ctx, limit, country, after=None, autocorrect=True):
         country_emoji = f":flag_{player['nationality']['country_code'].lower()}:" if player['nationality'] else " :united_nations:"
         name, rank, points = player['name'], player['rank'], round(player['score'], 2)
         # Leaderboard options & fields
-        options.append(interactions.SelectOption(
+        options.append(interactions.StringSelectOption(
             label=f"{name}",
             value=f"leaderboard_selectplayer_{name}",
             description=f"#{rank} - {points} points",
@@ -350,7 +350,7 @@ async def getProfileCompletions(name: str, p_id: int, completions: list, page: i
     opts = []
     buttonSets = []
     for record in completions:
-        opts.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']}",
+        opts.append(interactions.StringSelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']}",
                                               value=f'comp,{record["demon"]["name"]},{name},{record["video"][32:]},{record["demon"]["position"]}',
                                               description=f"{await calcPoints(record['demon']['position'])} points"))
     fOpts = await packActionRows(opts)
@@ -465,7 +465,7 @@ async def getProfile(ctx, name: str = None, discUser: interactions.User = None, 
                 legacy_demons.append(f"{record['demon']['name']}")
         else:
             completed_demons.append(f"{record['demon']['name']}")
-        options.append(interactions.SelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']} ",
+        options.append(interactions.StringSelectOption(label=f"#{record['demon']['position']}. {record['demon']['name']} ",
                                                  value=f'comp|{record["demon"]["name"]}|{p["name"]}|{record["video"][32:]}|{record["demon"]["position"]}',
                                                  description=f"{await calcPoints(record['demon']['position'])} points"))
 

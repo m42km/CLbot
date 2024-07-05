@@ -1,8 +1,7 @@
 import aiohttp
 
-session = aiohttp.ClientSession()
-
 async def requestGET(url: str) -> dict:
+    session = aiohttp.ClientSession()
     resp = await session.get(url)
     json = await resp.json()
     return json

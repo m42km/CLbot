@@ -272,7 +272,6 @@ async def getDailyDetails(msg: str, client: interactions.Client, token: str, get
     if getUser:
         userID = int(await getSubstr(lines[1], "@", ">"))
         user = await interactions.get(client=client, obj=interactions.User, object_id=userID)
-        user._client = interactions.HTTPClient(token, interactions.Cache())
         return dailynum, dType, doubleDaily, dms, user
     else:
         return dailynum, dType, doubleDaily, dms
@@ -362,7 +361,7 @@ async def fixEmbedVideo(s: str):
     return fixed
 
 
-async def postDaily(channel: interactions.Channel, dtype: str, num: int):
+async def postDaily(channel: interactions.GuildChannel, dtype: str, num: int):
     d = await getDailyDoc(dtype, num)
     dailyID, coolStars = int(d['level_id']), d['stars']
     levelName, levelCreator = await levelDetails(int(d['level_id']))
